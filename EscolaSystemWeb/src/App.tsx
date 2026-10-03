@@ -1,8 +1,8 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Sidebar } from './components/Sidebar';
+import { AppShell } from './components/Sidebar';
+import { NotificationsProvider } from './components/ui/Notifications';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Loading } from './components/Loading';
 
@@ -52,10 +52,7 @@ import { UserRole } from './types';
 
 function PrivateLayout() {
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-
-      <main className="flex-1 overflow-auto">
+    <AppShell>
         <Routes>
           {/* Admin */}
           <Route
@@ -249,8 +246,7 @@ function PrivateLayout() {
           {/* Redirect padrão após login */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </main>
-    </div>
+    </AppShell>
   );
 }
 
@@ -316,7 +312,9 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <AppRoutes />
+        <NotificationsProvider>
+          <AppRoutes />
+        </NotificationsProvider>
       </AuthProvider>
     </Router>
   );

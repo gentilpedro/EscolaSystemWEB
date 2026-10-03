@@ -11,14 +11,17 @@ export interface User {
   phone?: string;
 }
 
-export enum UserRole {
-  ADMIN = 'admin',
-  DIRECTOR = 'director',
-  TEACHER = 'teacher',
-  ORIENTADOR = 'orientador',
-  PARENT = 'parent',
-  STUDENT = 'student'
-}
+// Objeto constante em vez de enum (o tsconfig usa erasableSyntaxOnly); mesmos valores.
+export const UserRole = {
+  ADMIN: 'admin',
+  DIRECTOR: 'director',
+  TEACHER: 'teacher',
+  ORIENTADOR: 'orientador',
+  PARENT: 'parent',
+  STUDENT: 'student',
+} as const;
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export interface School {
   id: string;

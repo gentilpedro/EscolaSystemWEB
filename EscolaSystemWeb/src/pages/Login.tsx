@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Alert, Button, TextField } from '../components/ui';
+import { Wordmark } from '../components/layout/BrandMark';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -27,73 +29,83 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#6f73d2] via-[#7681b3] to-[#83c9f4] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">📚 Sistema Escolar</h1>
-          <p className="text-gray-600 mt-2">Faça login para continuar</p>
+    <div className="grid min-h-dvh bg-paper lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      {/* Lousa */}
+      <aside className="on-lousa relative hidden flex-col justify-between overflow-hidden bg-lousa-deep p-10 text-chalk lg:flex">
+        <Wordmark onLousa />
+        <div className="max-w-md">
+          <p className="text-[2rem] font-bold leading-tight">O diário, o boletim e o livro de ocorrências da escola, num lugar só.</p>
+          <p className="mt-4 text-chalk-2">Cada perfil entra direto na sua tarefa: chamada, notas, chamados e acompanhamento.</p>
         </div>
+        {/* pauta de giz */}
+        <div aria-hidden="true" className="space-y-3 opacity-25">
+          {[88, 64, 76].map(w => (
+            <div key={w} className="h-0.5 rounded bg-chalk" style={{ width: `${w}%` }} />
+          ))}
+        </div>
+      </aside>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 rounded-lg flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6f73d2] focus:border-transparent"
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Senha
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6f73d2] focus:border-transparent"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#6f73d2] hover:bg-[#5a5db8] disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition-colors"
+      <main className="flex flex-col px-4 py-6 sm:px-8">
+        <div className="flex items-center justify-between">
+          <span className="lg:hidden">
+            <Wordmark />
+          </span>
+          <Link
+            to="/"
+            className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-ink-2 hover:text-ink"
           >
-            {loading ? 'Entrando...' : 'Entrar'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-gray-600">
-          <p className="text-sm">Credenciais de teste (ajuste com seu backend)</p>
-          <p className="text-xs mt-2 text-gray-500">
-            Admin: admin@escolar.com | Diretor: diretor@escolar.com | Professor: prof@escolar.com
-          </p>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Início
+          </Link>
         </div>
-      </div>
+
+        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
+          <h1 className="text-[1.75rem] font-bold text-ink">Entrar</h1>
+          <p className="mt-1 text-[0.9375rem] text-ink-3">Use o e-mail e a senha criados pela sua escola.</p>
+
+          {error && (
+            <Alert tone="error" className="mt-6">
+              {error}
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <TextField
+              id="email"
+              label="E-mail"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="seu@email.com"
+              required
+            />
+            <TextField
+              id="password"
+              label="Senha"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+            />
+            <Button type="submit" loading={loading} loadingLabel="Entrando…" className="w-full">
+              Entrar
+            </Button>
+          </form>
+
+          <p className="mt-6 text-sm text-ink-3">Não tem acesso? Peça à direção ou à administração da sua escola.</p>
+
+          {import.meta.env.DEV && (
+            <div className="mt-8 rounded-md border border-dashed border-rule-strong bg-surface px-4 py-3 text-sm text-ink-3">
+              <p className="font-semibold text-ink-2">Credenciais de teste (somente em desenvolvimento)</p>
+              <p className="figures mt-1 break-words text-[0.8125rem]">
+                Admin: admin@escolar.com · Diretor: diretor@escolar.com · Professor: prof@escolar.com
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 };

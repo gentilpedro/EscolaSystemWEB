@@ -1,23 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Users, ChevronDown, ChevronUp } from 'lucide-react';
-import { Loading } from '../../components/Loading';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BookOpen, ChevronDown, ClipboardCheck, PenSquare, Users } from 'lucide-react';
 import type { ClassItem, StudentItem, PagedResult } from '../../types';
 import { classApi, studentApi } from '../../services/api';
+import { BlockLoader, ButtonLink, EmptyState, LoadError, PageHeader, PageLoader, TableFrame, TBody, Td, Th, THead, Tr } from '../../components/ui';
+import { listAll } from '../../lib/paging';
+import { cn } from '../../lib/cn';
+import { plural } from '../../lib/format';
 
 export const TeacherClasses: React.FC = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [studentsByClass, setStudentsByClass] = useState<Record<string, StudentItem[]>>({});
   const [loadingStudents, setLoadingStudents] = useState<string | null>(null);
+  const [failedStudents, setFailedStudents] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    classApi.list(1, 100)
-      .then((data: any) => setClasses((data as PagedResult<ClassItem>).items))
+  const fetchClasses = useCallback(() => {
+    classApi
+      .list(1, 100)
+      .then((data: PagedResult<ClassItem>) => {
+        setClasses(data.items);
+        setError(null);
+      })
       .catch(() => setError('Erro ao carregar turmas.'))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   const toggleClass = async (classId: string) => {
     if (expanded === classId) {
@@ -26,98 +38,139 @@ export const TeacherClasses: React.FC = () => {
     }
     setExpanded(classId);
     if (studentsByClass[classId]) return;
+    await loadStudents(classId);
+  };
+
+  const loadStudents = async (classId: string) => {
     setLoadingStudents(classId);
     try {
-      const data = await studentApi.list(1, 200, classId) as PagedResult<StudentItem>;
+      const data = await listAll<StudentItem>((page, size) => studentApi.list(page, size, classId));
       setStudentsByClass(prev => ({ ...prev, [classId]: data.items }));
+      setFailedStudents(prev => {
+        const next = new Set(prev);
+        next.delete(classId);
+        return next;
+      });
     } catch {
-      setStudentsByClass(prev => ({ ...prev, [classId]: [] }));
+      // Falha não vira "turma vazia": mostra o erro com opção de tentar de novo
+      setFailedStudents(prev => new Set(prev).add(classId));
     } finally {
       setLoadingStudents(null);
     }
   };
 
-  if (loading) return <Loading />;
+  const header = (
+    <PageHeader
+      title="Minhas turmas"
+      description={!loading ? `${plural(classes.length, 'turma atribuída', 'turmas atribuídas')}` : undefined}
+    />
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <PageLoader label="Carregando turmas…" rows={4} />
+      </>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Minhas Turmas</h1>
-      <p className="text-gray-500 mb-8">{classes.length} turma{classes.length !== 1 ? 's' : ''} atribuída{classes.length !== 1 ? 's' : ''}</p>
-
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+    <>
+      {header}
+      {error && <LoadError message={error} onRetry={() => {
+            setLoading(true);
+            fetchClasses();
+          }} />}
 
       {classes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-          <p className="text-lg font-medium">Nenhuma turma atribuída</p>
-          <p className="text-sm mt-1">Entre em contato com a diretoria para ser vinculado a uma turma.</p>
+        <div className="rounded-lg border border-rule bg-surface">
+          <EmptyState icon={BookOpen} title="Nenhuma turma atribuída">
+            Entre em contato com a diretoria para ser vinculado a uma turma.
+          </EmptyState>
         </div>
       ) : (
-        <div className="space-y-4">
+        <ul className="space-y-3">
           {classes.map(cls => {
             const students = studentsByClass[cls.id] ?? [];
             const isOpen = expanded === cls.id;
             const isLoadingThis = loadingStudents === cls.id;
+            const panelId = `turma-${cls.id}`;
 
             return (
-              <div key={cls.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <button
-                  onClick={() => toggleClass(cls.id)}
-                  className="w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-blue-100 text-blue-700 rounded-lg p-3">
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-lg font-semibold text-gray-800">{cls.name}</p>
-                      <p className="text-sm text-gray-500">Ano letivo: {cls.year} · {cls.schoolName}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {isOpen && !isLoadingThis && (
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
-                        <Users className="w-4 h-4" />
-                        <span>{students.length} aluno{students.length !== 1 ? 's' : ''}</span>
-                      </div>
+              <li key={cls.id} className="overflow-hidden rounded-lg border border-rule bg-surface">
+                <h2>
+                  <button
+                    type="button"
+                    onClick={() => toggleClass(cls.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150 hover:bg-paper"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg font-bold text-ink">{cls.name}</span>
+                      <span className="block text-sm text-ink-3">
+                        Ano letivo <span className="figures">{cls.year}</span> · {cls.schoolName}
+                      </span>
+                    </span>
+                    {isOpen && !isLoadingThis && studentsByClass[cls.id] && (
+                      <span className="hidden items-center gap-1.5 text-sm text-ink-3 sm:inline-flex">
+                        <Users className="h-4 w-4" aria-hidden="true" />
+                        {plural(students.length, 'aluno', 'alunos')}
+                      </span>
                     )}
-                    {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-                  </div>
-                </button>
+                    <ChevronDown
+                      className={cn('h-5 w-5 shrink-0 text-ink-3 transition-transform duration-200', isOpen && 'rotate-180')}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </h2>
 
                 {isOpen && (
-                  <div className="border-t border-gray-200">
+                  <div id={panelId} className="border-t border-rule p-4">
+                    {cls.isActive && (
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        <ButtonLink to={`/teacher/attendance?turma=${cls.id}`} size="sm" icon={<ClipboardCheck className="h-4 w-4" aria-hidden="true" />}>
+                          Fazer chamada
+                        </ButtonLink>
+                        <ButtonLink to={`/teacher/grades?turma=${cls.id}`} size="sm" variant="secondary" icon={<PenSquare className="h-4 w-4" aria-hidden="true" />}>
+                          Lançar notas
+                        </ButtonLink>
+                      </div>
+                    )}
                     {isLoadingThis ? (
-                      <div className="px-6 py-6 text-center text-gray-500 text-sm">Carregando alunos...</div>
+                      <BlockLoader label="Carregando alunos…" rows={3} />
+                    ) : failedStudents.has(cls.id) ? (
+                      <LoadError message="Não foi possível carregar os alunos desta turma." onRetry={() => loadStudents(cls.id)}/>
                     ) : students.length === 0 ? (
-                      <div className="px-6 py-6 text-center text-gray-400 text-sm">Nenhum aluno nesta turma ainda.</div>
+                      <EmptyState icon={Users} title="Nenhum aluno nesta turma ainda" compact />
                     ) : (
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Nome</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Matrícula</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">E-mail</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
+                      <TableFrame caption={`Alunos da turma ${cls.name}`} minWidth="32rem">
+                        <THead>
+                          <Th sticky>Nome</Th>
+                          <Th>Matrícula</Th>
+                          <Th>E-mail</Th>
+                        </THead>
+                        <TBody>
                           {students.map(s => (
-                            <tr key={s.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-3 font-medium text-gray-800">{s.name}</td>
-                              <td className="px-6 py-3 text-gray-500 font-mono text-sm">{s.registration}</td>
-                              <td className="px-6 py-3 text-gray-500">{s.email}</td>
-                            </tr>
+                            <Tr key={s.id}>
+                              <Td sticky strong className="whitespace-nowrap">
+                                {s.name}
+                              </Td>
+                              <Td className="figures text-sm">{s.registration}</Td>
+                              <Td>{s.email}</Td>
+                            </Tr>
                           ))}
-                        </tbody>
-                      </table>
+                        </TBody>
+                      </TableFrame>
                     )}
                   </div>
                 )}
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </>
   );
 };

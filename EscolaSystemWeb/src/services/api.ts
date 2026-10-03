@@ -1,6 +1,6 @@
 // API Service with Fetch
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, any>;
@@ -48,8 +48,8 @@ class ApiService {
     return url;
   }
 
-  private getHeaders(options?: RequestOptions): HeadersInit {
-    const headers: HeadersInit = {
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
@@ -66,7 +66,7 @@ class ApiService {
   ): Promise<T> {
     const { params, ...fetchOptions } = options || {};
     const url = this.buildUrl(endpoint, params);
-    const headers = this.getHeaders(options);
+    const headers = this.getHeaders();
 
     try {
       const response = await fetch(url, {
@@ -87,8 +87,10 @@ class ApiService {
         throw new Error(error.message || `HTTP Error: ${response.status}`);
       }
 
-      const data = await response.json();
-      return data as T;
+      // 204 No Content (exclusões, vínculos) não tem corpo para ler
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      return (text ? JSON.parse(text) : undefined) as T;
     } catch (error) {
       console.error('API Error:', error);
       throw error;
@@ -239,10 +241,16 @@ export const pendingWorkApi = {
   markDelivered: (id: string) => api.put(`/pending-works/${id}/delivered`),
 };
 
+// Dashboard endpoints (já existentes na API: GET /api/admin/stats)
+export const dashboardApi = {
+  adminStats: () => api.get('/admin/stats'),
+};
+
 // Disciplinary Report endpoints
 export const disciplinaryApi = {
-  list: (schoolId?: string, studentId?: string, status?: string) =>
-    api.get('/disciplinary-calls', { params: { schoolId, studentId, status } }),
+  // page/pageSize opcionais: sem eles a API devolve só os 20 primeiros
+  list: (schoolId?: string, studentId?: string, status?: string, page?: number, pageSize?: number) =>
+    api.get('/disciplinary-calls', { params: { schoolId, studentId, status, page, pageSize } }),
   get: (id: string) => api.get(`/disciplinary-calls/${id}`),
   create: (data: any) => api.post('/disciplinary-calls', data),
   update: (id: string, data: any) => api.put(`/disciplinary-calls/${id}`, data),

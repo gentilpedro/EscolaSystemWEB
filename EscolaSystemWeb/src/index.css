@@ -1,29 +1,133 @@
 @import "tailwindcss";
 
+/*
+  Diário de Classe — tokens do sistema visual.
+  Papel frio + réguas finas; a navegação é a lousa; tinta azul / tinta vermelha
+  para os estados do registro (presença, situação, nota).
+*/
 @theme {
-  --color-primary:          #6f73d2;
-  --color-primary-dark:     #5a5db8;
-  --color-primary-deep:     #4e519e;
-  --color-secondary:        #7681b3;
-  --color-accent:           #83c9f4;
-  --color-accent-light:     #a3d5ff;
-  --color-accent-lightest:  #d9f0ff;
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Superfícies */
+  --color-paper: #f3f5f4;
+  --color-surface: #ffffff;
+  --color-sunken: #eaefec;
+  --color-rule: #d5ddd9;
+  --color-rule-strong: #a7b6af;
+  /* Borda de controles (campos, botões, teclas): 3,4:1 sobre branco, 3,2:1 sobre o papel (WCAG 1.4.11) */
+  --color-control: #7f8d87;
+
+  /* Texto */
+  --color-ink: #15211c;
+  --color-ink-2: #3e4c46;
+  --color-ink-3: #5b6862;
+
+  /* Lousa (acento institucional e navegação) */
+  --color-lousa: #1f5c47;
+  --color-lousa-hover: #184a39;
+  --color-lousa-tint: #e2eee8;
+  --color-lousa-deep: #163c30;
+  --color-lousa-line: #2b5a4a;
+  --color-chalk: #e9f0ec;
+  --color-chalk-2: #a9c2b7;
+
+  /* Tinta do registro */
+  --color-blue-ink: #1f4fa3;
+  --color-blue-tint: #e6edf9;
+  --color-red-ink: #b42318;
+  --color-red-ink-hover: #9a1d14;
+  --color-red-ink-active: #7f1810;
+  --color-red-tint: #fbeae8;
+  /* Linha de falta: tinta vermelha diluída e opaca, para células fixas da tabela */
+  --color-red-wash: #fdf6f5;
+  --color-amber-ink: #8a4b00;
+  --color-amber-tint: #fcf0dc;
+
+  --shadow-dialog: 0 18px 48px -12px rgb(21 33 28 / 0.32), 0 2px 6px rgb(21 33 28 / 0.08);
+  --shadow-raise: 0 1px 2px rgb(21 33 28 / 0.06);
+
+  --animate-toast-in: toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-dialog-in: dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes dialog-in {
+    from { opacity: 0; transform: translateY(6px) scale(0.99); }
+    to { opacity: 1; transform: none; }
+  }
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  min-height: 100%;
-  margin: 0;
-  padding: 0;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.5;
+    caret-color: var(--color-lousa);
+    accent-color: var(--color-lousa);
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: var(--color-lousa-tint);
+    color: var(--color-ink);
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-lousa);
+    outline-offset: 2px;
+  }
+
+  /* Algarismos de registro: notas, datas, matrículas, contagens */
+  .figures {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Números em destaque: proporcionais, para a vírgula decimal não abrir vão */
+  .figures-display {
+    font-variant-numeric: proportional-nums lining-nums;
+  }
+
+  dialog::backdrop {
+    background: rgb(21 33 28 / 0.45);
+  }
 }
 
-body {
-  background: #f0f7ff;
-  font-family: Arial, Helvetica, sans-serif;
+/* Movimento reduzido: as entradas viram só opacidade, o estado continua visível */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes toast-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dialog-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }
 
-* {
-  box-sizing: border-box;
+/* Contexto lousa: foco visível em giz sobre o verde */
+.on-lousa :focus-visible {
+  outline-color: var(--color-chalk);
 }

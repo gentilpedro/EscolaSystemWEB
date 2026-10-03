@@ -1,0 +1,7 @@
+# Artefatos locais da ferramenta impeccable: capturas de tela, cache e um perfil
+# completo de navegador (cookies e dados de sessão) que nunca devem ser versionados
+.impeccable/review/
+.impeccable/hook.cache.json
+
+# Permissões locais do Claude Code
+.claude/settings.local.json

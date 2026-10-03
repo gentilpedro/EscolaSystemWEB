@@ -1,163 +1,202 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  Menu,
-  X,
-  Home,
-  Users,
-  BookOpen,
-  BarChart3,
-  Settings,
-  LogOut,
-  Building2,
-  FileText,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
+import { cn } from '../lib/cn';
+import { SESSION_ROLE_LABEL } from '../lib/school';
+import { NAV_ITEMS } from './layout/navigation';
+import { Wordmark } from './layout/BrandMark';
+import { UnsavedChangesProvider, useUnsavedChanges } from './layout/UnsavedChanges';
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-}
+/**
+ * Estrutura autenticada. A navegação é a lousa: painel verde-lousa fixo à esquerda
+ * em telas largas; no celular vira barra superior + gaveta.
+ */
+export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <UnsavedChangesProvider>
+    <Shell>{children}</Shell>
+  </UnsavedChangesProvider>
+);
 
-export const Sidebar: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const { user, logout } = useAuth();
+const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
-  const getNavItems = (): NavItem[] => {
-    const baseItems: NavItem[] = [];
+  // Gaveta aberta = o resto da página fica inerte (foco preso na navegação)
+  useEffect(() => {
+    const targets = [headerRef.current, mainRef.current];
+    targets.forEach(el => (open ? el?.setAttribute('inert', '') : el?.removeAttribute('inert')));
+    return () => targets.forEach(el => el?.removeAttribute('inert'));
+  }, [open]);
 
-    if (!user) return baseItems;
-
-    switch (user.role) {
-      case UserRole.ADMIN:
-        return [
-          { label: 'Dashboard', href: '/admin', icon: <Home className="w-5 h-5" /> },
-          { label: 'Escolas', href: '/admin/schools', icon: <Building2 className="w-5 h-5" /> },
-          { label: 'Usuários', href: '/admin/users', icon: <Users className="w-5 h-5" /> },
-          { label: 'Configurações', href: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
-        ];
-
-      case UserRole.DIRECTOR:
-        return [
-          { label: 'Dashboard', href: '/director', icon: <Home className="w-5 h-5" /> },
-          { label: 'Funcionários', href: '/director/staff', icon: <Users className="w-5 h-5" /> },
-          { label: 'Turmas', href: '/director/classes', icon: <BookOpen className="w-5 h-5" /> },
-          { label: 'Alunos', href: '/director/students', icon: <Users className="w-5 h-5" /> },
-          { label: 'Relatórios', href: '/director/reports', icon: <BarChart3 className="w-5 h-5" /> },
-          { label: 'Chamados', href: '/director/disciplinary', icon: <FileText className="w-5 h-5" /> },
-        ];
-
-      case UserRole.TEACHER:
-        return [
-          { label: 'Dashboard', href: '/teacher', icon: <Home className="w-5 h-5" /> },
-          { label: 'Minhas Turmas', href: '/teacher/classes', icon: <BookOpen className="w-5 h-5" /> },
-          { label: 'Chamada', href: '/teacher/attendance', icon: <Users className="w-5 h-5" /> },
-          { label: 'Notas', href: '/teacher/grades', icon: <BarChart3 className="w-5 h-5" /> },
-          { label: 'Chamados', href: '/teacher/disciplinary', icon: <FileText className="w-5 h-5" /> },
-        ];
-
-      case UserRole.ORIENTADOR:
-        return [
-          { label: 'Dashboard', href: '/orientador', icon: <Home className="w-5 h-5" /> },
-          { label: 'Alunos', href: '/orientador/students', icon: <Users className="w-5 h-5" /> },
-          { label: 'Faltas', href: '/orientador/attendance', icon: <Users className="w-5 h-5" /> },
-          { label: 'Notas', href: '/orientador/grades', icon: <BarChart3 className="w-5 h-5" /> },
-          { label: 'Chamados', href: '/orientador/disciplinary', icon: <FileText className="w-5 h-5" /> },
-        ];
-
-      case UserRole.PARENT:
-        return [
-          { label: 'Dashboard', href: '/parent', icon: <Home className="w-5 h-5" /> },
-          { label: 'Chamados', href: '/parent/disciplinary', icon: <FileText className="w-5 h-5" /> },
-        ];
-
-      case UserRole.STUDENT:
-        return [
-          { label: 'Dashboard', href: '/student', icon: <Home className="w-5 h-5" /> },
-          { label: 'Notas', href: '/student/grades', icon: <BarChart3 className="w-5 h-5" /> },
-          { label: 'Faltas', href: '/student/attendance', icon: <Users className="w-5 h-5" /> },
-          { label: 'Trabalhos', href: '/student/assignments', icon: <BookOpen className="w-5 h-5" /> },
-        ];
-
-      default:
-        return [];
-    }
+  const closeDrawer = () => {
+    setOpen(false);
+    menuButtonRef.current?.focus();
   };
 
-  const navItems = getNavItems();
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    drawerRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   return (
-    <>
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-white text-[#6f73d2] rounded-lg shadow-md"
+    <div className="min-h-dvh lg:flex">
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:font-semibold focus:text-ink focus:shadow-dialog"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-      </button>
+        Pular para o conteúdo
+      </a>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-[#6f73d2] to-[#5a5db8] text-white transform transition-transform duration-300 z-30 lg:relative lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">📚 Sistema Escolar</h1>
-          <p className="text-[#d9f0ff] text-sm mt-1">{user?.role.toUpperCase()}</p>
-        </div>
+      {/* Barra superior (celular/tablet) */}
+      <header ref={headerRef} className="on-lousa sticky top-0 z-30 flex h-14 items-center justify-between bg-lousa-deep px-3 text-chalk lg:hidden">
+        <Wordmark onLousa className="pl-1" />
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          aria-controls="navegacao-principal"
+          aria-label={open ? 'Fechar menu' : 'Abrir menu'}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-chalk hover:bg-white/10"
+        >
+          {open ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
+        </button>
+      </header>
 
-        <nav className="mt-8 px-4 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
+      <Sidebar ref={drawerRef} open={open} onNavigate={() => setOpen(false)} onClose={closeDrawer} />
+
+      {open && (
+        <div className="fixed inset-0 z-30 bg-ink/45 lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" />
+      )}
+
+      <main ref={mainRef} id="conteudo" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">{children}</div>
+      </main>
+    </div>
+  );
+};
+
+interface SidebarProps {
+  open: boolean;
+  onNavigate: () => void;
+  onClose: () => void;
+}
+
+export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(({ open, onNavigate, onClose }, ref) => {
+  const { user, logout } = useAuth();
+  const items = user ? NAV_ITEMS[user.role] ?? [] : [];
+  const { pending, confirmLeave } = useUnsavedChanges();
+  const navigate = useNavigate();
+
+  // Com alterações não salvas, perguntar antes de trocar de página
+  const guardedNavigate = (e: React.MouseEvent, to: string) => {
+    if (!pending) {
+      onNavigate();
+      return;
+    }
+    e.preventDefault();
+    confirmLeave().then(ok => {
+      if (ok) {
+        onNavigate();
+        navigate(to);
+      }
+    });
+  };
+
+  return (
+    <aside
+      ref={ref}
+      id="navegacao-principal"
+      aria-label="Navegação principal"
+      className={cn(
+        'on-lousa fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col bg-lousa-deep text-chalk',
+        'transition-[transform,visibility] duration-200 ease-out',
+        'lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-64 lg:max-w-none lg:translate-x-0 lg:visible lg:shrink-0',
+        open ? 'translate-x-0 visible' : '-translate-x-full invisible',
+      )}
+    >
+      <div className="flex h-16 items-center justify-between border-b border-lousa-line pl-5 pr-3">
+        <Wordmark onLousa />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar menu"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-chalk hover:bg-white/10 lg:hidden"
+        >
+          <X className="h-6 w-6" aria-hidden="true" />
+        </button>
+      </div>
+
+      {user && (
+        <p className="px-5 pb-1 pt-5 text-[0.8125rem] font-semibold text-chalk-2">{SESSION_ROLE_LABEL[user.role] ?? user.role}</p>
+      )}
+
+      <nav className="flex-1 overflow-y-auto px-3 py-2">
+        <ul className="space-y-0.5">
+          {items.map(item => (
+            <li key={item.href}>
+              <NavLink
+                to={item.href}
+                end={item.end}
+                onClick={e => guardedNavigate(e, item.href)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex min-h-11 items-center gap-3 rounded-md px-3 text-[0.9375rem] transition-colors duration-150',
+                    isActive ? 'bg-chalk font-bold text-lousa-deep' : 'text-chalk/90 hover:bg-white/10 hover:text-chalk',
+                  )
+                }
+              >
+                <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span>{item.label}</span>
+              </NavLink>
+            </li>
           ))}
-        </nav>
+        </ul>
+      </nav>
 
-        {/* User Profile Section */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-[#4e519e] border-t border-[#7681b3]">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-[#83c9f4] flex items-center justify-center">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full" />
-              ) : (
-                <span className="text-sm font-bold text-[#4e519e]">{user?.name.charAt(0)}</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{user?.name}</p>
-              <p className="text-xs text-[#a3d5ff] truncate">{user?.email}</p>
+      {user && (
+        <div className="border-t border-lousa-line p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-chalk font-bold text-lousa-deep">
+              {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : user.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[0.9375rem] font-semibold text-chalk">{user.name}</p>
+              <p className="truncate text-[0.8125rem] text-chalk-2">{user.email}</p>
             </div>
           </div>
           <button
-            onClick={() => {
+            type="button"
+            onClick={async () => {
+              if (!(await confirmLeave())) return;
               logout();
-              setIsOpen(false);
+              onNavigate();
             }}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors border border-white/20"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-lousa-line text-[0.9375rem] font-semibold text-chalk transition-colors hover:bg-white/10"
           >
-            <LogOut className="w-4 h-4" />
-            <span>Sair</span>
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            Sair
           </button>
         </div>
-      </aside>
-
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
       )}
-    </>
+    </aside>
   );
-};
+});
+Sidebar.displayName = 'Sidebar';

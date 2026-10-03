@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T00:00:00Z",
+  "title": "Design System: EscolaSystem",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Papel Frio", "canonical": "oklch(96.8% 0.002 165.1)", "tonalRamp": ["oklch(15% 0.004 165)", "oklch(25% 0.004 165)", "oklch(35% 0.004 165)", "oklch(45% 0.004 165)", "oklch(55% 0.004 165)", "oklch(65% 0.004 165)", "oklch(80% 0.004 165)", "oklch(96.8% 0.002 165)"] },
+      "surface": { "role": "neutral", "displayName": "Folha", "canonical": "#ffffff", "tonalRamp": ["#ffffff"] },
+      "sunken": { "role": "neutral", "displayName": "Rebaixado", "canonical": "oklch(94.7% 0.007 160.1)" },
+      "rule": { "role": "neutral", "displayName": "Régua", "canonical": "oklch(89.0% 0.010 164.8)" },
+      "rule-strong": { "role": "neutral", "displayName": "Régua Forte", "canonical": "oklch(76.3% 0.019 166.2)", "tonalRamp": ["#15211c", "#3e4c46", "#5b6862", "#a7b6af", "#d5ddd9", "#eaefec", "#f3f5f4", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "oklch(23.5% 0.019 167.0)" },
+      "ink-2": { "role": "neutral", "displayName": "Tinta 2", "canonical": "oklch(40.2% 0.020 167.5)" },
+      "ink-3": { "role": "neutral", "displayName": "Tinta 3", "canonical": "oklch(50.4% 0.018 166.1)" },
+      "lousa": { "role": "primary", "displayName": "Verde-Lousa", "canonical": "oklch(42.9% 0.072 166.9)", "tonalRamp": ["#163c30", "#184a39", "#1f5c47", "#2b5a4a", "oklch(55% 0.072 167)", "#a9c2b7", "#e2eee8", "#e9f0ec"] },
+      "lousa-hover": { "role": "primary", "displayName": "Lousa Escurecida", "canonical": "#184a39" },
+      "lousa-deep": { "role": "primary", "displayName": "Lousa Profunda", "canonical": "oklch(32.5% 0.049 169.8)" },
+      "lousa-line": { "role": "primary", "displayName": "Fio da Lousa", "canonical": "#2b5a4a" },
+      "lousa-tint": { "role": "primary", "displayName": "Verde Seleção", "canonical": "#e2eee8" },
+      "chalk": { "role": "secondary", "displayName": "Giz", "canonical": "oklch(94.9% 0.009 161.3)" },
+      "chalk-2": { "role": "secondary", "displayName": "Giz Apagado", "canonical": "oklch(79.2% 0.031 167.2)" },
+      "blue-ink": { "role": "tertiary", "displayName": "Tinta Azul", "canonical": "oklch(44.5% 0.146 260.7)", "tonalRamp": ["oklch(18% 0.08 261)", "oklch(28% 0.11 261)", "oklch(36% 0.13 261)", "#1f4fa3", "oklch(55% 0.13 261)", "oklch(68% 0.10 261)", "oklch(82% 0.05 261)", "#e6edf9"] },
+      "blue-tint": { "role": "tertiary", "displayName": "Azul Claro", "canonical": "#e6edf9" },
+      "red-ink": { "role": "tertiary", "displayName": "Tinta Vermelha", "canonical": "oklch(50.0% 0.182 29.5)", "tonalRamp": ["oklch(20% 0.08 29)", "oklch(30% 0.12 29)", "#7f1810", "#9a1d14", "#b42318", "oklch(65% 0.14 29)", "oklch(82% 0.06 29)", "#fbeae8"] },
+      "red-ink-hover": { "role": "tertiary", "displayName": "Vermelho Escurecido", "canonical": "#9a1d14" },
+      "red-ink-active": { "role": "tertiary", "displayName": "Vermelho Pressionado", "canonical": "#7f1810" },
+      "red-tint": { "role": "tertiary", "displayName": "Vermelho Claro", "canonical": "#fbeae8" },
+      "amber-ink": { "role": "tertiary", "displayName": "Tinta Âmbar", "canonical": "oklch(47.9% 0.112 59.9)", "tonalRamp": ["oklch(20% 0.05 60)", "oklch(30% 0.08 60)", "oklch(38% 0.10 60)", "#8a4b00", "oklch(58% 0.12 60)", "oklch(70% 0.11 65)", "oklch(85% 0.06 70)", "#fcf0dc"] },
+      "amber-tint": { "role": "tertiary", "displayName": "Âmbar Claro", "canonical": "#fcf0dc" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Só o título da Home; 2.5rem, 3.25rem a partir de 640px." },
+      "headline": { "displayName": "Headline", "purpose": "Título de página sobre a régua dupla; 2rem a partir de 640px." },
+      "title": { "displayName": "Title", "purpose": "Título de painel (1rem) e de diálogo (1.125rem)." },
+      "body": { "displayName": "Body", "purpose": "Texto de trabalho da interface: tabelas, campos, botões, avisos." },
+      "label": { "displayName": "Label", "purpose": "Rótulos de campo, cabeçalho de tabela (700), botão pequeno." },
+      "caption": { "displayName": "Caption", "purpose": "Dicas, erros de campo, metadados na lousa." },
+      "figure": { "displayName": "Figure", "purpose": "Totais do resumo onde os números são o conteúdo; algarismos proporcionais." },
+      "stamp": { "displayName": "Stamp", "purpose": "Somente o carimbo de situação; única caixa alta do sistema." }
+    },
+    "shadows": [
+      { "name": "dialog", "value": "0 18px 48px -12px rgb(21 33 28 / 0.32), 0 2px 6px rgb(21 33 28 / 0.08)", "purpose": "Diálogos modais, avisos flutuantes e o link Pular para o conteúdo." },
+      { "name": "raise", "value": "0 1px 2px rgb(21 33 28 / 0.06)", "purpose": "Relevo de 1px nos botões sólidos primário e de perigo." },
+      { "name": "backdrop", "value": "rgb(21 33 28 / 0.45)", "purpose": "Véu do modal e da gaveta de navegação." }
+    ],
+    "motion": [
+      { "name": "dialog-in", "value": "200ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrada do diálogo: opacidade + 6px e escala 0.99; só opacidade com movimento reduzido." },
+      { "name": "toast-in", "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entrada do aviso flutuante: opacidade + 8px; só opacidade com movimento reduzido." },
+      { "name": "state", "value": "150ms", "purpose": "Transições de cor de botões, campos, itens de navegação e teclas P/F." },
+      { "name": "drawer", "value": "200ms ease-out", "purpose": "Gaveta da lousa no celular." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Uma ação principal por região: verde-lousa, texto branco, relevo de 1px.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Salvar chamada</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 6px; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: background-color 150ms, color 150ms, border-color 150ms; } .ds-btn-primary { background: var(--color-lousa, #1f5c47); color: #fff; box-shadow: 0 1px 2px rgb(21 33 28 / 0.06); } .ds-btn-primary:hover { background: var(--color-lousa-hover, #184a39); } .ds-btn-primary:active { background: var(--color-lousa-deep, #163c30); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-lousa, #1f5c47); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão secundário",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Cancelar, tentar de novo, ações de apoio.",
+      "html": "<button class=\"ds-btn2\">Cancelar</button>",
+      "css": ".ds-btn2 { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 6px; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; background: var(--color-surface, #fff); color: var(--color-ink, #15211c); border: 1px solid var(--color-control, #7f8d87); cursor: pointer; transition: background-color 150ms; } .ds-btn2:hover { background: var(--color-sunken, #eaefec); } .ds-btn2:active { background: var(--color-rule, #d5ddd9); } .ds-btn2:focus-visible { outline: 2px solid var(--color-lousa, #1f5c47); outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão de perigo",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Só dentro do diálogo de confirmação de ação destrutiva.",
+      "html": "<button class=\"ds-btn-danger\">Excluir</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 6px; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; font-size: 0.9375rem; font-weight: 600; background: var(--color-red-ink, #b42318); color: #fff; border: 0; box-shadow: 0 1px 2px rgb(21 33 28 / 0.06); cursor: pointer; transition: background-color 150ms; } .ds-btn-danger:hover { background: var(--color-red-ink-hover, #9a1d14); } .ds-btn-danger:active { background: var(--color-red-ink-active, #7f1810); } .ds-btn-danger:focus-visible { outline: 2px solid var(--color-lousa, #1f5c47); outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Rótulo acima, borda régua-forte, foco em lousa com anel suave.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Nome do aluno</span><input class=\"ds-input\" placeholder=\"Ex.: Ana Beatriz Moura\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; } .ds-field-label { font-size: 0.875rem; font-weight: 600; color: var(--color-ink, #15211c); } .ds-input { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--color-control, #7f8d87); background: var(--color-surface, #fff); color: var(--color-ink, #15211c); font: inherit; font-size: 0.9375rem; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: var(--color-ink-3, #5b6862); } .ds-input:hover { border-color: var(--color-ink-3, #5b6862); } .ds-input:focus { outline: none; border-color: var(--color-lousa, #1f5c47); box-shadow: 0 0 0 2px rgb(31 92 71 / 0.25); }"
+    },
+    {
+      "name": "Carimbos de situação",
+      "kind": "chip",
+      "refersTo": "stamp-pending",
+      "description": "Situação do registro como carimbo retangular em caixa alta.",
+      "html": "<span class=\"ds-stamp ds-stamp-amber\">Pendente</span> <span class=\"ds-stamp ds-stamp-blue\">Aprovado</span> <span class=\"ds-stamp ds-stamp-red\">Rejeitado</span> <span class=\"ds-stamp ds-stamp-lousa\">Ativa</span>",
+      "css": ".ds-stamp { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 3px; border: 1.5px solid; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; font-size: 0.6875rem; line-height: 1rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; } .ds-stamp-amber { color: #8a4b00; border-color: rgb(138 75 0 / 0.55); background: rgb(252 240 220 / 0.7); } .ds-stamp-blue { color: #1f4fa3; border-color: rgb(31 79 163 / 0.55); background: rgb(230 237 249 / 0.6); } .ds-stamp-red { color: #b42318; border-color: rgb(180 35 24 / 0.55); background: rgb(251 234 232 / 0.6); } .ds-stamp-lousa { color: #1f5c47; border-color: rgb(31 92 71 / 0.45); background: rgb(226 238 232 / 0.7); }"
+    },
+    {
+      "name": "Painel pautado",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contêiner padrão: folha, régua de 1px, sem sombra, linhas pautadas.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-panel-head\"><h2>Minhas turmas</h2></div><ul class=\"ds-panel-list\"><li><b>7º Ano B</b><span>Ano letivo 2026</span></li><li><b>8º Ano A</b><span>Ano letivo 2026</span></li></ul></section>",
+      "css": ".ds-panel { background: var(--color-surface, #fff); border: 1px solid var(--color-rule, #d5ddd9); border-radius: 8px; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; color: var(--color-ink, #15211c); } .ds-panel-head { padding: 14px 20px; border-bottom: 1px solid var(--color-rule, #d5ddd9); } .ds-panel-head h2 { margin: 0; font-size: 1rem; font-weight: 700; } .ds-panel-list { list-style: none; margin: 0; padding: 0; } .ds-panel-list li { display: flex; flex-direction: column; padding: 12px 20px; } .ds-panel-list li + li { border-top: 1px solid var(--color-rule, #d5ddd9); } .ds-panel-list span { font-size: 0.875rem; color: var(--color-ink-3, #5b6862); font-variant-numeric: tabular-nums lining-nums; }"
+    },
+    {
+      "name": "Navegação (lousa)",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Painel verde-lousa profundo com texto giz; item ativo em giz sólido.",
+      "html": "<nav class=\"ds-lousa\"><p class=\"ds-lousa-role\">Professor</p><a class=\"ds-nav-item\" href=\"#\">Painel</a><a class=\"ds-nav-item is-active\" href=\"#\" aria-current=\"page\">Chamada</a><a class=\"ds-nav-item\" href=\"#\">Notas</a></nav>",
+      "css": ".ds-lousa { width: 256px; padding: 8px 12px 16px; background: var(--color-lousa-deep, #163c30); color: var(--color-chalk, #e9f0ec); font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; display: flex; flex-direction: column; gap: 2px; } .ds-lousa-role { margin: 12px 8px 4px; font-size: 0.8125rem; font-weight: 600; color: var(--color-chalk-2, #a9c2b7); } .ds-nav-item { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; font-size: 0.9375rem; color: rgb(233 240 236 / 0.9); text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-nav-item:hover { background: rgb(255 255 255 / 0.1); color: var(--color-chalk, #e9f0ec); } .ds-nav-item.is-active { background: var(--color-chalk, #e9f0ec); color: var(--color-lousa-deep, #163c30); font-weight: 700; } .ds-nav-item:focus-visible { outline: 2px solid var(--color-chalk, #e9f0ec); outline-offset: 2px; }"
+    },
+    {
+      "name": "Grade de chamada",
+      "kind": "custom",
+      "refersTo": "attendance-key",
+      "description": "Assinatura: linha numerada com teclas P/F; azul sólido = presente, vermelho sólido = falta.",
+      "html": "<ol class=\"ds-chamada\"><li><span class=\"n\">1</span><span class=\"nome\">Ana Beatriz Moura</span><span class=\"keys\"><button class=\"ds-key is-p\" aria-pressed=\"true\">P</button><button class=\"ds-key\" aria-pressed=\"false\">F</button></span></li><li class=\"is-absent\"><span class=\"n\">2</span><span class=\"nome\">Bruno Henrique Dias</span><span class=\"keys\"><button class=\"ds-key\" aria-pressed=\"false\">P</button><button class=\"ds-key is-f\" aria-pressed=\"true\">F</button></span></li></ol>",
+      "css": ".ds-chamada { list-style: none; margin: 0; padding: 0; background: #fff; border: 1px solid var(--color-rule, #d5ddd9); border-radius: 8px; overflow: hidden; font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; } .ds-chamada li { display: grid; grid-template-columns: 2rem 1fr auto; align-items: center; gap: 12px; padding: 10px 16px; } .ds-chamada li + li { border-top: 1px solid var(--color-rule, #d5ddd9); } .ds-chamada li.is-absent { background: rgb(251 234 232 / 0.35); } .ds-chamada .n { text-align: right; font-size: 0.875rem; color: var(--color-ink-3, #5b6862); font-variant-numeric: tabular-nums; } .ds-chamada .nome { font-weight: 600; color: var(--color-ink, #15211c); } .ds-chamada .keys { display: flex; gap: 6px; } .ds-key { width: 40px; height: 40px; border-radius: 4px; border: 1.5px solid var(--color-control, #7f8d87); background: #fff; color: var(--color-ink-3, #5b6862); font: inherit; font-weight: 700; cursor: pointer; transition: background-color 150ms, border-color 150ms, color 150ms; } .ds-key:hover { border-color: var(--color-ink-3, #5b6862); color: var(--color-ink-2, #3e4c46); } .ds-key.is-p { background: var(--color-blue-ink, #1f4fa3); border-color: var(--color-blue-ink, #1f4fa3); color: #fff; } .ds-key.is-f { background: var(--color-red-ink, #b42318); border-color: var(--color-red-ink, #b42318); color: #fff; } .ds-key:focus-visible { outline: 2px solid var(--color-lousa, #1f5c47); outline-offset: 2px; }"
+    },
+    {
+      "name": "Cabeçalho de página",
+      "kind": "custom",
+      "refersTo": "headline",
+      "description": "Título sobre a régua dupla de livro-registro, ações à direita.",
+      "html": "<header class=\"ds-pagehead\"><div><h1>Chamada</h1><p>03/10/2026 · Sábado (hoje)</p></div><button class=\"ds-pagehead-act\">Nova chamada</button></header>",
+      "css": ".ds-pagehead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; padding-bottom: 16px; border-bottom: 3px double var(--color-rule-strong, #a7b6af); font-family: \"Atkinson Hyperlegible Next Variable\", system-ui, sans-serif; } .ds-pagehead h1 { margin: 0; font-size: 1.75rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; color: var(--color-ink, #15211c); } .ds-pagehead p { margin: 4px 0 0; font-size: 0.9375rem; color: var(--color-ink-3, #5b6862); font-variant-numeric: tabular-nums lining-nums; } .ds-pagehead-act { min-height: 44px; padding: 0 16px; border-radius: 6px; border: 0; background: var(--color-lousa, #1f5c47); color: #fff; font: inherit; font-weight: 600; cursor: pointer; } .ds-pagehead-act:hover { background: var(--color-lousa-hover, #184a39); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Diário de Classe",
+    "overview": "O EscolaSystem se veste como o registro escolar brasileiro que ele substitui: papel frio, réguas finas de caderno pautado, régua dupla de livro-registro no topo de cada página, a lousa verde como navegação e três tintas de registro (azul, vermelha, âmbar) que carregam todo o significado de estado. Não é um painel SaaS de cartões coloridos com ícone e número grande; é uma folha de registro onde cada linha é um aluno, uma nota ou uma ocorrência.\n\nA densidade é de ferramenta de uso diário: texto de interface a 15px, linhas de tabela de 48px, alvos de toque de 44px, tudo sobre um único fundo papel com contêineres brancos delimitados por régua, sem sombra. A cor de acento institucional (verde-lousa) é rara no conteúdo: aparece no botão principal, no foco, no item ativo da alternância e na própria lousa lateral. As tintas azul/vermelha/âmbar são reservadas para o registro (presença, nota, situação) e nunca decoram.\n\nA Home pública (superfície de persuasão) usa a mesma identidade, sem um segundo sistema: tipo maior, seções separadas por régua, um diário de chamada real como espécime e um bloco de fechamento em lousa.",
+    "keyCharacteristics": [
+      "Papel frio neutro com contêineres brancos delimitados por réguas de 1px; zero sombra em repouso.",
+      "Régua dupla de 3px sob o título de cada página, como num livro-registro.",
+      "Navegação é a lousa: verde-lousa profundo com texto giz; item ativo vira giz sólido.",
+      "Três tintas de registro com significado fixo: azul = presente/aprovado/na média; vermelha = falta/rejeitado/nota vermelha; âmbar = pendente/atenção.",
+      "Situações são carimbos retangulares em caixa alta, a única caixa alta do sistema.",
+      "Uma só família tipográfica (Atkinson Hyperlegible Next), com algarismos tabulares nos registros e proporcionais nos números em destaque."
+    ],
+    "rules": [
+      { "name": "A Regra da Tinta de Registro", "body": "Azul, vermelho e âmbar significam estado do registro e nada mais. Nunca colorir ícones, cartões ou perfis com eles; o perfil do usuário é uma etiqueta neutra (sunken + ink-2), sem arco-íris.", "section": "colors" },
+      { "name": "A Regra Nunca Só Pela Cor", "body": "Todo estado leva também texto ou forma: P/F por letra, carimbo por extenso, nota vermelha sublinhada (2px, deslocamento 4px) e situação por extenso para leitores de tela.", "section": "colors" },
+      { "name": "A Regra da Lousa Rara", "body": "O verde-lousa sólido no conteúdo é para uma ação principal por região e para a seleção ativa. Superfícies inteiras em lousa existem só na navegação e no fechamento da Home.", "section": "colors" },
+      { "name": "A Regra dos Dois Algarismos", "body": "Registros (notas em tabela, datas, matrículas, contagens, numeração de linha, paginação) usam algarismos tabulares e alinhados (`.figures`). Números em destaque (notas grandes, totais do resumo) usam proporcionais e alinhados (`.figures-display`), para a vírgula decimal não abrir vão.", "section": "typography" },
+      { "name": "A Regra da Caixa Alta do Carimbo", "body": "Caixa alta com espaçamento existe apenas dentro do carimbo de situação. Títulos, rótulos e cabeçalhos ficam em caixa normal.", "section": "typography" },
+      { "name": "A Regra da Régua no Lugar da Sombra", "body": "Contêineres em repouso se separam do papel por uma régua de 1px (rule) e pelo branco da folha. Se algo precisa de sombra para se destacar, é uma sobreposição, não um cartão.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do abrir cada página com o título sobre a régua dupla de 3px (rule-strong) e colocar a tarefa principal logo abaixo.",
+      "Do usar azul para presente/aprovado/na média, vermelho para falta/rejeitado/abaixo de 5,0 e âmbar para pendente/atenção, sempre com texto ou forma junto.",
+      "Do mostrar situações como carimbos retangulares (canto 3px, borda 1.5px, caixa alta 11px).",
+      "Do aplicar algarismos tabulares em registros e proporcionais em números em destaque.",
+      "Do separar contêineres por régua de 1px sobre papel, sem sombra.",
+      "Do isolar a ação destrutiva das vizinhas e confirmá-la num diálogo próprio.",
+      "Do mostrar \"—\" e um aviso com \"Tentar de novo\" quando um dado falhou ao carregar.",
+      "Do manter alvos de 44px em botões, campos e itens de navegação."
+    ],
+    "donts": [
+      "Don't montar painéis como mural de cartões coloridos com ícone e número grande; totais vão numa linha no cabeçalho, salvo onde os números são o conteúdo.",
+      "Don't colorir perfis, ícones ou seções com as tintas do registro.",
+      "Don't pôr sombra em painéis, tabelas ou listas em repouso.",
+      "Don't usar caixa alta fora do carimbo de situação.",
+      "Don't introduzir uma segunda família tipográfica ou a variante Mono para números.",
+      "Don't fazer a página rolar de lado; a tabela rola dentro da moldura."
+    ]
+  }
+}

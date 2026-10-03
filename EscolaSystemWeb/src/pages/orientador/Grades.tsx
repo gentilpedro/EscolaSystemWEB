@@ -1,101 +1,145 @@
-import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { Loading } from '../../components/Loading';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { PenSquare } from 'lucide-react';
 import type { ClassItem, GradeItem, PagedResult } from '../../types';
 import { classApi, gradeApi } from '../../services/api';
+import {
+  BlockLoader,
+  EmptyState,
+  FilterBar,
+  FilterSelect,
+  GradeLegend,
+  GradeValue,
+  LoadError,
+  PageHeader,
+  PageLoader,
+  SearchInput,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui';
+import { matches } from '../../lib/format';
+import { listAll } from '../../lib/paging';
 
 export const OrientadorGrades: React.FC = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [grades, setGrades] = useState<GradeItem[]>([]);
-  const [selectedClass, setSelectedClass] = useState('');
+  const [searchParams] = useSearchParams();
+  // ?turma=<id> vem do painel
+  const [selectedClass, setSelectedClass] = useState(() => searchParams.get('turma') ?? '');
   const [loading, setLoading] = useState(true);
+  const [loadingGrades, setLoadingGrades] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gradesFailed, setGradesFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    classApi.list(1, 100)
-      .then((data: any) => setClasses((data as PagedResult<ClassItem>).items))
+    classApi
+      .list(1, 100)
+      .then((data: PagedResult<ClassItem>) => setClasses(data.items))
       .catch(() => setError('Erro ao carregar turmas.'))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    fetchGrades();
-  }, [selectedClass]);
-
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async () => {
     try {
-      const data = await gradeApi.list(1, 200, selectedClass || undefined) as PagedResult<GradeItem>;
+      const data = await listAll<GradeItem>((page, size) => gradeApi.list(page, size, selectedClass || undefined));
       setGrades(data.items);
+      setGradesFailed(false);
     } catch {
       setGrades([]);
+      setGradesFailed(true);
+    } finally {
+      setLoadingGrades(false);
     }
-  };
+  }, [selectedClass]);
 
-  const filtered = grades.filter(g =>
-    g.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    g.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    fetchGrades();
+  }, [fetchGrades]);
 
-  if (loading) return <Loading />;
+  const filtered = grades.filter(g => matches(searchTerm, g.studentName, g.subject));
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Notas</h1>
+    <>
+      <PageHeader
+        title="Notas"
+      />
 
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+      {loading ? (
+        <PageLoader label="Carregando turmas…" />
+      ) : (
+        <>
+          {error && <LoadError message={error} />}
+          {gradesFailed && <LoadError message="Erro ao carregar notas." onRetry={() => {
+            setLoadingGrades(true);
+            fetchGrades();
+          }} />}
 
-      <div className="mb-6 flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Pesquisar aluno ou disciplina..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-          />
-        </div>
-        <select
-          value={selectedClass}
-          onChange={e => setSelectedClass(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 bg-white"
-        >
-          <option value="">Todas as turmas</option>
-          {classes.map(c => <option key={c.id} value={c.id}>{c.name} ({c.year})</option>)}
-        </select>
-      </div>
+          <FilterBar>
+            <SearchInput label="Pesquisar notas" value={searchTerm} onChange={setSearchTerm} placeholder="Pesquisar aluno ou disciplina…" />
+            <FilterSelect
+              label="Filtrar por turma"
+              value={selectedClass}
+              onChange={v => {
+                setLoadingGrades(true);
+                setSelectedClass(v);
+              }}
+            >
+              <option value="">Todas as turmas</option>
+              {classes.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.year})
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterBar>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Aluno</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Turma</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Disciplina</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Período</th>
-              <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Nota</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-500">Nenhuma nota encontrada</td></tr>
-            ) : filtered.map(g => (
-              <tr key={g.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-800">{g.studentName}</td>
-                <td className="px-6 py-4 text-gray-600">{g.className}</td>
-                <td className="px-6 py-4 text-gray-600">{g.subject}</td>
-                <td className="px-6 py-4 text-gray-600">{g.period}</td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`px-3 py-1 text-sm font-bold rounded-full ${g.value >= 6 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {g.value.toFixed(1)}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          {loadingGrades ? (
+            <BlockLoader label="Carregando notas…" />
+          ) : (
+            <TableFrame caption="Notas lançadas" minWidth="40rem">
+              <THead>
+                <Th sticky>Aluno</Th>
+                <Th>Turma</Th>
+                <Th>Disciplina</Th>
+                <Th>Período</Th>
+                <Th align="right">Nota</Th>
+              </THead>
+              <TBody>
+                {filtered.length === 0 ? (
+                  <TableEmptyRow colSpan={5}>
+                    <EmptyState icon={PenSquare} title="Nenhuma nota encontrada" compact>
+                      {searchTerm || selectedClass ? 'Ajuste a busca ou a turma.' : 'Ainda não há notas lançadas.'}
+                    </EmptyState>
+                  </TableEmptyRow>
+                ) : (
+                  filtered.map(g => (
+                    <Tr key={g.id}>
+                      <Td sticky strong className="whitespace-nowrap">
+                        {g.studentName}
+                      </Td>
+                      <Td className="whitespace-nowrap">{g.className}</Td>
+                      <Td>{g.subject}</Td>
+                      <Td className="whitespace-nowrap">{g.period}</Td>
+                      <Td align="right">
+                        <GradeValue value={g.value} />
+                      </Td>
+                    </Tr>
+                  ))
+                )}
+              </TBody>
+            </TableFrame>
+          )}
+          {!loadingGrades && (
+            <GradeLegend />
+          )}
+        </>
+      )}
+    </>
   );
 };

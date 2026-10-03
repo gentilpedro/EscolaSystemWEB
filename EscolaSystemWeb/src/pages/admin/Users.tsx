@@ -1,27 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, ChevronLeft, ChevronRight, UserCheck, UserX } from 'lucide-react';
-import { Loading } from '../../components/Loading';
-import type { UserListItem, StudentItem, PagedResult } from '../../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Plus, Pencil, Trash2, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import type { UserListItem, StudentItem, PagedResult, School } from '../../types';
 import { ROLES } from '../../types';
 import { userApi, schoolApi, studentApi } from '../../services/api';
+import {
+  ActiveStamp,
+  Alert,
+  BlockLoader,
+  Button,
+  CheckboxField,
+  EmptyState,
+  FilterBar,
+  FilterSelect,
+  FormDialog,
+  IconButton,
+  LoadError,
+  PageHeader,
+  PageLoader,
+  Pagination,
+  RoleTag,
+  RowActions,
+  SearchInput,
+  SelectField,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  TextField,
+  Th,
+  THead,
+  Tr,
+  errorMessage,
+  useConfirm,
+  useToast,
+} from '../../components/ui';
+import { matches, plural } from '../../lib/format';
+import { listAll } from '../../lib/paging';
 
-const ROLE_COLORS: Record<string, string> = {
-  Admin: 'bg-red-100 text-red-800',
-  Director: 'bg-purple-100 text-purple-800',
-  Teacher: 'bg-blue-100 text-blue-800',
-  Student: 'bg-green-100 text-green-800',
-  Parent: 'bg-yellow-100 text-yellow-800',
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  Admin: 'Administrador',
-  Director: 'Diretor',
-  Teacher: 'Professor',
-  Student: 'Aluno',
-  Parent: 'Responsável',
-};
+const PAGE_SIZE = 15;
 
 export const AdminUsers: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [pagedData, setPagedData] = useState<PagedResult<UserListItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,35 +50,71 @@ export const AdminUsers: React.FC = () => {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  // Com busca ou filtro ativos, a pesquisa cobre a rede inteira (não só a página atual)
+  const [allUsers, setAllUsers] = useState<UserListItem[] | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [page]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data: PagedResult<UserListItem> = await userApi.list(page, 15);
+      const data: PagedResult<UserListItem> = await userApi.list(page, PAGE_SIZE);
       setPagedData(data);
-    } catch (err) {
+      setError(null);
+    } catch {
       setError('Erro ao carregar usuários.');
     } finally {
       setLoading(false);
     }
+  }, [page]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const fetchAllUsers = useCallback(async () => {
+    setLoadingAll(true);
+    try {
+      const data = await listAll<UserListItem>((p, size) => userApi.list(p, size));
+      setAllUsers(data.items);
+    } catch {
+      setError('Erro ao pesquisar usuários.');
+    } finally {
+      setLoadingAll(false);
+    }
+  }, []);
+
+  const refresh = () => {
+    fetchUsers();
+    if (allUsers) fetchAllUsers();
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este usuário?')) return;
+  const updateFilter = (apply: () => void) => {
+    apply();
+    if (!allUsers && !loadingAll) fetchAllUsers();
+  };
+
+  const handleDelete = async (user: UserListItem) => {
+    const ok = await confirm({ title: `Excluir o usuário ${user.name}?`, description: user.email, confirmLabel: 'Excluir usuário' });
+    if (!ok) return;
     try {
-      await userApi.delete(id);
-      fetchUsers();
+      await userApi.delete(user.id);
+      toast.success('Usuário excluído.');
+      refresh();
     } catch {
-      alert('Erro ao excluir usuário.');
+      toast.error('Erro ao excluir usuário.');
     }
   };
 
   const handleToggleActive = async (user: UserListItem) => {
+    const ok = await confirm({
+      title: user.isActive ? `Desativar ${user.name}?` : `Ativar ${user.name}?`,
+      description: user.email,
+      consequence: user.isActive
+        ? 'O usuário deixa de conseguir entrar no sistema. Os registros dele continuam guardados e ele pode ser reativado depois.'
+        : 'O usuário volta a conseguir entrar no sistema com a senha atual.',
+      confirmLabel: user.isActive ? 'Desativar' : 'Ativar',
+      tone: user.isActive ? 'danger' : 'primary',
+    });
+    if (!ok) return;
     try {
       await userApi.update(user.id, {
         name: user.name,
@@ -67,165 +123,168 @@ export const AdminUsers: React.FC = () => {
         schoolId: user.schoolId ?? null,
         isActive: !user.isActive,
       });
-      fetchUsers();
+      toast.success(user.isActive ? `${user.name} foi desativado.` : `${user.name} foi ativado.`);
+      refresh();
     } catch {
-      alert('Erro ao atualizar usuário.');
+      toast.error('Erro ao atualizar usuário.');
     }
   };
 
-  const filteredUsers = (pagedData?.items ?? []).filter(u => {
-    const matchesSearch =
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter ? u.role === roleFilter : true;
-    return matchesSearch && matchesRole;
-  });
+  const filtering = searchTerm.trim() !== '' || roleFilter !== '';
+  const source = filtering && allUsers ? allUsers : pagedData?.items ?? [];
+  const filteredUsers = source.filter(u => matches(searchTerm, u.name, u.email) && (roleFilter ? u.role === roleFilter : true));
 
-  if (loading) return <Loading />;
+  const isFirstLoad = loading && !pagedData;
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
-        <button
-          onClick={() => { setEditingUser(null); setShowModal(true); }}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Novo Usuário</span>
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Usuários"
+        description={pagedData ? `${pagedData.totalCount.toLocaleString('pt-BR')} usuários na rede` : undefined}
+        actions={
+          <Button
+            icon={<Plus className="h-4 w-4" aria-hidden="true" />}
+            onClick={() => {
+              setEditingUser(null);
+              setShowModal(true);
+            }}
+          >
+            Novo usuário
+          </Button>
+        }
+      />
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>
-      )}
+      {isFirstLoad ? (
+        <PageLoader label="Carregando usuários…" />
+      ) : (
+        <>
+          {error && <LoadError message={error} onRetry={() => { setLoading(true); fetchUsers(); }} />}
 
-      {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Pesquisar por nome ou e-mail..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-          />
-        </div>
-        <select
-          value={roleFilter}
-          onChange={e => setRoleFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white"
-        >
-          <option value="">Todos os perfis</option>
-          {ROLES.map(r => (
-            <option key={r.id} value={r.name}>{r.label}</option>
-          ))}
-        </select>
-      </div>
+          <FilterBar>
+            <SearchInput
+              label="Pesquisar usuários"
+              value={searchTerm}
+              onChange={v => updateFilter(() => setSearchTerm(v))}
+              placeholder="Pesquisar por nome ou e-mail em toda a rede…"
+            />
+            <FilterSelect label="Filtrar por perfil" value={roleFilter} onChange={v => updateFilter(() => setRoleFilter(v))}>
+              <option value="">Todos os perfis</option>
+              {ROLES.map(r => (
+                <option key={r.id} value={r.name}>
+                  {r.label}
+                </option>
+              ))}
+            </FilterSelect>
+          </FilterBar>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">E-mail</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Perfil</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Escola</th>
-              <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredUsers.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                  Nenhum usuário encontrado
-                </td>
-              </tr>
-            ) : (
-              filteredUsers.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-800">{user.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${ROLE_COLORS[user.role] ?? 'bg-gray-100 text-gray-800'}`}>
-                      {ROLE_LABELS[user.role] ?? user.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{user.schoolName ?? '—'}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                      {user.isActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center space-x-3">
-                      <button
-                        onClick={() => handleToggleActive(user)}
-                        title={user.isActive ? 'Desativar' : 'Ativar'}
-                        className={`transition-colors ${user.isActive ? 'text-yellow-500 hover:text-yellow-700' : 'text-green-500 hover:text-green-700'}`}
-                      >
-                        {user.isActive ? <UserX className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
-                      </button>
-                      <button
-                        onClick={() => { setEditingUser(user); setShowModal(true); }}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <Edit2 className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+          {filtering && (
+            <p className="-mt-3 mb-4 text-sm text-ink-3" aria-live="polite">
+              {loadingAll ? 'Pesquisando em toda a rede…' : `${plural(filteredUsers.length, 'usuário encontrado', 'usuários encontrados')} em toda a rede`}
+            </p>
+          )}
 
-      {/* Pagination */}
-      {pagedData && pagedData.totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4">
-          <p className="text-sm text-gray-600">
-            Mostrando {(page - 1) * 15 + 1}–{Math.min(page * 15, pagedData.totalCount)} de {pagedData.totalCount} usuários
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(p => p - 1)}
-              disabled={page === 1}
-              className="p-2 rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+          {loading || (filtering && loadingAll) ? (
+            <BlockLoader label="Carregando usuários…" rows={8} />
+          ) : (
+            <TableFrame
+              caption="Usuários"
+              minWidth="56rem"
+              footer={
+                !filtering &&
+                pagedData &&
+                pagedData.totalPages > 1 && (
+                  <Pagination
+                    page={page}
+                    totalPages={pagedData.totalPages}
+                    totalCount={pagedData.totalCount}
+                    pageSize={PAGE_SIZE}
+                    noun="usuários"
+                    onPage={p => {
+                      setLoading(true);
+                      setPage(p);
+                    }}
+                  />
+                )
+              }
             >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-4 py-2 text-sm text-gray-700">
-              {page} / {pagedData.totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page === pagedData.totalPages}
-              className="p-2 rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-50 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+              <THead>
+                <Th sticky>Nome</Th>
+                <Th>E-mail</Th>
+                <Th>Perfil</Th>
+                <Th>Escola</Th>
+                <Th>Situação</Th>
+                <Th align="right" srOnly>
+                  Ações
+                </Th>
+              </THead>
+              <TBody>
+                {filteredUsers.length === 0 ? (
+                  <TableEmptyRow colSpan={6}>
+                    <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" compact>
+                      {searchTerm || roleFilter ? 'Ajuste a busca ou o filtro de perfil nesta página.' : undefined}
+                    </EmptyState>
+                  </TableEmptyRow>
+                ) : (
+                  filteredUsers.map(user => (
+                    <Tr key={user.id}>
+                      <Td sticky strong className="whitespace-nowrap">
+                        {user.name}
+                      </Td>
+                      <Td>{user.email}</Td>
+                      <Td>
+                        <RoleTag role={user.role} />
+                      </Td>
+                      <Td>{user.schoolName ?? <span className="text-ink-3">—</span>}</Td>
+                      <Td>
+                        <ActiveStamp active={user.isActive} />
+                      </Td>
+                      <Td align="right">
+                        <RowActions
+                          destructive={
+                            <IconButton
+                              tone="danger"
+                              label={`Excluir ${user.name}`}
+                              icon={<Trash2 className="h-5 w-5" />}
+                              onClick={() => handleDelete(user)}
+                            />
+                          }
+                        >
+                          <IconButton
+                            label={user.isActive ? `Desativar ${user.name}` : `Ativar ${user.name}`}
+                            icon={user.isActive ? <UserX className="h-5 w-5" /> : <UserCheck className="h-5 w-5" />}
+                            onClick={() => handleToggleActive(user)}
+                          />
+                          <IconButton
+                            label={`Editar ${user.name}`}
+                            icon={<Pencil className="h-5 w-5" />}
+                            onClick={() => {
+                              setEditingUser(user);
+                              setShowModal(true);
+                            }}
+                          />
+                        </RowActions>
+                      </Td>
+                    </Tr>
+                  ))
+                )}
+              </TBody>
+            </TableFrame>
+          )}
+        </>
       )}
 
       {showModal && (
         <UserModal
           user={editingUser}
           onClose={() => setShowModal(false)}
-          onSave={() => { fetchUsers(); setShowModal(false); }}
+          onSave={() => {
+            toast.success(editingUser ? 'Usuário atualizado.' : 'Usuário criado.');
+            setShowModal(false);
+            refresh();
+          }}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -249,14 +308,20 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schoolsFailed, setSchoolsFailed] = useState(false);
+  const [studentsFailed, setStudentsFailed] = useState(false);
 
   useEffect(() => {
-    schoolApi.list(1, 100).then((data: any) => setSchools(data.items ?? [])).catch(() => {});
+    listAll<School>((page, size) => schoolApi.list(page, size))
+      .then(data => setSchools(data.items ?? []))
+      .catch(() => setSchoolsFailed(true));
   }, []);
 
   useEffect(() => {
     if (formData.roleId === 4) {
-      studentApi.list(1, 500).then((data: any) => setStudents(data.items ?? [])).catch(() => {});
+      listAll<StudentItem>((page, size) => studentApi.list(page, size))
+        .then(data => setStudents(data.items ?? []))
+        .catch(() => setStudentsFailed(true));
     }
   }, [formData.roleId]);
 
@@ -280,148 +345,86 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
           password: formData.password,
           roleId: formData.roleId,
           schoolId: formData.schoolId || null,
-          studentId: formData.roleId === 4 ? (formData.studentId || null) : null,
+          studentId: formData.roleId === 4 ? formData.studentId || null : null,
         });
       }
       onSave();
-    } catch (err: any) {
-      setError(err.message ?? 'Erro ao salvar usuário.');
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao salvar usuário.'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            {user ? 'Editar Usuário' : 'Novo Usuário'}
-          </h2>
+    <FormDialog title={user ? 'Editar usuário' : 'Novo usuário'} onClose={onClose} onSubmit={handleSubmit} saving={saving} submitLabel="Salvar">
+      {error && <Alert tone="error">{error}</Alert>}
+      <TextField label="Nome" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+      <TextField
+        label="E-mail"
+        type="email"
+        autoComplete="off"
+        value={formData.email}
+        onChange={e => setFormData({ ...formData, email: e.target.value })}
+        required
+      />
+      {!user && (
+        <TextField
+          label="Senha"
+          type="password"
+          autoComplete="new-password"
+          value={formData.password}
+          onChange={e => setFormData({ ...formData, password: e.target.value })}
+          hint="Mínimo de 6 caracteres."
+          required
+          minLength={6}
+        />
+      )}
+      <SelectField label="Perfil" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
+        {ROLES.map(r => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+      </SelectField>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
-          )}
+      {formData.roleId === 4 && !user && (
+        <SelectField
+          label="Aluno vinculado"
+          value={formData.studentId}
+          onChange={e => setFormData({ ...formData, studentId: e.target.value })}
+          error={studentsFailed ? 'Não foi possível carregar os alunos. Feche e abra o formulário de novo.' : undefined}
+          required
+        >
+          <option value="">Selecione o aluno…</option>
+          {students.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name} — {s.className}
+            </option>
+          ))}
+        </SelectField>
+      )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                required
-              />
-            </div>
+      {formData.roleId !== 1 && (
+        <SelectField
+          label="Escola"
+          value={formData.schoolId}
+          onChange={e => setFormData({ ...formData, schoolId: e.target.value })}
+          error={schoolsFailed ? 'Não foi possível carregar as escolas. Feche e abra o formulário de novo.' : undefined}
+          required={!user}
+        >
+          <option value="">Selecione a escola…</option>
+          {schools.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                required
-              />
-            </div>
-
-            {!user && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                  required={!user}
-                  minLength={6}
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Perfil</label>
-              <select
-                value={formData.roleId}
-                onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white"
-                required
-              >
-                {ROLES.map(r => (
-                  <option key={r.id} value={r.id}>{r.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {formData.roleId === 4 && !user && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Aluno vinculado <span className="text-red-500">*</span></label>
-                <select
-                  value={formData.studentId}
-                  onChange={e => setFormData({ ...formData, studentId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white"
-                  required={formData.roleId === 4}
-                >
-                  <option value="">Selecione o aluno...</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} — {s.className}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {formData.roleId !== 1 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Escola {!user && <span className="text-red-500">*</span>}
-                </label>
-                <select
-                  value={formData.schoolId}
-                  onChange={e => setFormData({ ...formData, schoolId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white"
-                  required={!user && formData.roleId !== 1}
-                >
-                  <option value="">Selecione a escola...</option>
-                  {schools.map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {user && (
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="w-4 h-4 text-blue-600 rounded"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium text-gray-700">Usuário ativo</label>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-lg transition-colors"
-              >
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+      {user && (
+        <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
+      )}
+    </FormDialog>
   );
 };

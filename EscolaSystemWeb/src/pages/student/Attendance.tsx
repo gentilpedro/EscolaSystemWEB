@@ -1,8 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
-import { Loading } from '../../components/Loading';
-import type { AttendanceItem, PagedResult } from '../../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CalendarCheck } from 'lucide-react';
+import type { AttendanceItem } from '../../types';
 import { attendanceApi } from '../../services/api';
+import { listAll } from '../../lib/paging';
+import {
+  Alert,
+  AttendanceMark,
+  EmptyState,
+  FilterBar,
+  FilterSelect,
+  LoadError,
+  PageHeader,
+  PageLoader,
+  SummaryStrip,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui';
+import { ATTENDANCE_MIN, attendanceRate, attendanceTone } from '../../lib/school';
+import { formatDate, formatPercent } from '../../lib/format';
 
 export const StudentAttendance: React.FC = () => {
   const [records, setRecords] = useState<AttendanceItem[]>([]);
@@ -10,105 +30,115 @@ export const StudentAttendance: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [classFilter, setClassFilter] = useState('');
 
-  useEffect(() => {
-    attendanceApi.list(1, 500)
-      .then((data: any) => {
-        const items = (data as PagedResult<AttendanceItem>).items;
-        setRecords(items.sort((a, b) => b.date.localeCompare(a.date)));
+  const fetchRecords = useCallback(() => {
+    listAll<AttendanceItem>((page, size) => attendanceApi.list(page, size))
+      .then(data => {
+        setRecords([...data.items].sort((a, b) => b.date.localeCompare(a.date)));
+        setError(null);
       })
       .catch(() => setError('Erro ao carregar frequência.'))
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
+
   const classes = [...new Set(records.map(r => r.className))].sort();
   const filtered = classFilter ? records.filter(r => r.className === classFilter) : records;
 
-  const total    = filtered.length;
-  const present  = filtered.filter(r => r.isPresent).length;
-  const absent   = total - present;
-  const rate     = total > 0 ? ((present / total) * 100).toFixed(1) : '—';
+  const total = filtered.length;
+  const present = filtered.filter(r => r.isPresent).length;
+  const absent = total - present;
+  const rate = attendanceRate(present, total);
 
-  if (loading) return <Loading />;
+  const header = <PageHeader title="Minha frequência" description={`A frequência mínima de referência é ${ATTENDANCE_MIN}%.`} />;
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <PageLoader label="Carregando frequência…" />
+      </>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Minha Frequência</h1>
+    <>
+      {header}
+      {error && (
+        <LoadError
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            fetchRecords();
+          }}
+        />
+      )}
 
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+      <SummaryStrip
+        items={[
+          { label: 'Presenças', value: error ? '—' : present, tone: 'blue' },
+          { label: 'Faltas', value: error ? '—' : absent, tone: !error && attendanceTone(rate) === 'red' ? 'red' : 'default' },
+          {
+            label: 'Presença',
+            value: rate !== null ? formatPercent(rate) : '—',
+            tone: error ? 'default' : attendanceTone(rate),
+          },
+        ]}
+      />
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4 text-center">
-          <p className="text-sm text-gray-500">Presenças</p>
-          <p className="text-3xl font-bold text-green-600">{present}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 text-center">
-          <p className="text-sm text-gray-500">Faltas</p>
-          <p className={`text-3xl font-bold ${absent > 10 ? 'text-red-600' : 'text-orange-500'}`}>{absent}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 text-center">
-          <p className="text-sm text-gray-500">% Presença</p>
-          <p className={`text-3xl font-bold ${Number(rate) >= 75 ? 'text-green-600' : 'text-red-600'}`}>{rate}{rate !== '—' ? '%' : ''}</p>
-        </div>
-      </div>
-
-      {absent > 0 && Number(rate) < 75 && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium">
-          ⚠️ Atenção: sua taxa de presença está abaixo de 75%. Isso pode impactar sua aprovação.
-        </div>
+      {rate !== null && absent > 0 && rate < ATTENDANCE_MIN && (
+        <Alert tone="error" title={`Sua presença está abaixo de ${ATTENDANCE_MIN}%.`} className="mb-5">
+          Isso pode impactar sua aprovação. Converse com a orientação da escola.
+        </Alert>
       )}
 
       {classes.length > 1 && (
-        <div className="mb-6">
-          <select
-            value={classFilter}
-            onChange={e => setClassFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 bg-white"
-          >
+        <FilterBar>
+          <FilterSelect label="Filtrar por turma" value={classFilter} onChange={setClassFilter}>
             <option value="">Todas as turmas</option>
-            {classes.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+            {classes.map(c => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </FilterSelect>
+        </FilterBar>
       )}
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Data</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Turma</th>
-              <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Observação</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={4} className="px-6 py-10 text-center text-gray-500">Nenhum registro encontrado.</td></tr>
-            ) : filtered.map(r => (
-              <tr key={r.id} className={`hover:bg-gray-50 ${!r.isPresent ? 'bg-red-50/30' : ''}`}>
-                <td className="px-6 py-4 font-medium text-gray-800">
-                  {new Date(r.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                </td>
-                <td className="px-6 py-4 text-gray-600">{r.className}</td>
-                <td className="px-6 py-4 text-center">
-                  {r.isPresent ? (
-                    <div className="flex items-center justify-center gap-1 text-green-600">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">Presente</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-1 text-red-600">
-                      <XCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">Ausente</span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-gray-500 text-sm">{r.notes ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <TableFrame caption="Registros de presença" minWidth="34rem">
+        <THead>
+          <Th sticky>Data</Th>
+          <Th>Turma</Th>
+          <Th>Presença</Th>
+          <Th>Observação</Th>
+        </THead>
+        <TBody>
+          {filtered.length === 0 ? (
+            <TableEmptyRow colSpan={4}>
+              <EmptyState icon={CalendarCheck} title="Nenhum registro encontrado" compact>
+                As chamadas aparecem aqui conforme os professores registram.
+              </EmptyState>
+            </TableEmptyRow>
+          ) : (
+            filtered.map(r => (
+              <Tr key={r.id} tone={r.isPresent ? 'default' : 'flag'}>
+                <Td sticky strong className="figures whitespace-nowrap">
+                  {formatDate(r.date)}
+                </Td>
+                <Td className="whitespace-nowrap">{r.className}</Td>
+                <Td>
+                  <AttendanceMark present={r.isPresent} />
+                </Td>
+                <Td muted className="text-sm">
+                  {r.notes || '—'}
+                </Td>
+              </Tr>
+            ))
+          )}
+        </TBody>
+      </TableFrame>
+    </>
   );
 };
