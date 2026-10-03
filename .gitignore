@@ -2,6 +2,8 @@
 # completo de navegador (cookies e dados de sessão) que nunca devem ser versionados
 .impeccable/review/
 .impeccable/hook.cache.json
+.impeccable/hook.pending.json
+.impeccable/config.local.json
 
 # Permissões locais do Claude Code
 .claude/settings.local.json

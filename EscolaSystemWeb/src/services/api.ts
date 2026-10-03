@@ -1,6 +1,7 @@
 // API Service with Fetch
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Sem VITE_API_URL, usa a porta padrão da EscolaSystem API em desenvolvimento (launchSettings: 5130)
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5130/api';
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, any>;
