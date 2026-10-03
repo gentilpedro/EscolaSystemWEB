@@ -44,62 +44,6 @@ export interface UserListItem {
   createdAt: string;
 }
 
-export interface Class {
-  id: string;
-  name: string;
-  schoolId: string;
-  year: number;
-  teacherId: string;
-  students: Student[];
-  createdAt: string;
-}
-
-export interface Student {
-  id: string;
-  name: string;
-  email?: string;
-  cpf: string;
-  dateOfBirth: string;
-  parentId: string;
-  schoolId: string;
-  classId: string;
-  avatar?: string;
-  createdAt: string;
-}
-
-export interface Grade {
-  id: string;
-  studentId: string;
-  classId: string;
-  subject: string;
-  grade: number;
-  period: string;
-  recordedAt: string;
-}
-
-export interface Attendance {
-  id: string;
-  studentId: string;
-  classId: string;
-  date: string;
-  present: boolean;
-  justification?: string;
-  recordedAt: string;
-}
-
-export interface DisciplinaryReport {
-  id: string;
-  studentId: string;
-  teacherId: string;
-  schoolId: string;
-  title: string;
-  description: string;
-  status: 'open' | 'approved' | 'rejected';
-  createdAt: string;
-  approvedAt?: string;
-  sentToParentsAt?: string;
-}
-
 export interface ClassItem {
   id: string;
   name: string;
@@ -180,13 +124,6 @@ export interface PendingWorkItem {
   isDelivered: boolean;
   deliveredAt?: string;
   createdAt: string;
-}
-
-export interface AuthContext {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
 }
 
 export const ROLES: { id: number; name: string; label: string }[] = [
