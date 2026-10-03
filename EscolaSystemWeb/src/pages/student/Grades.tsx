@@ -1,95 +1,178 @@
-import React, { useState, useEffect } from 'react';
-import { Loading } from '../../components/Loading';
-import type { GradeItem, PagedResult } from '../../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { PenSquare } from 'lucide-react';
+import type { GradeItem } from '../../types';
 import { gradeApi } from '../../services/api';
+import {
+  EmptyState,
+  FilterBar,
+  FilterSelect,
+  GradeLegend,
+  GradeValue,
+  LoadError,
+  PageHeader,
+  PageLoader,
+  TableEmptyRow,
+  TableFrame,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr,
+} from '../../components/ui';
+import { PERIODS, average, comparePeriods } from '../../lib/school';
+import { listAll } from '../../lib/paging';
 
-const GRADE_COLOR = (v: number) => v >= 7 ? 'text-green-600' : v >= 5 ? 'text-yellow-600' : 'text-red-600';
-const GRADE_BG = (v: number) => v >= 7 ? 'bg-green-50 border-green-200' : v >= 5 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200';
+const SHORT_PERIOD: Record<string, string> = {
+  '1º Bimestre': '1º Bim',
+  '2º Bimestre': '2º Bim',
+  '3º Bimestre': '3º Bim',
+  '4º Bimestre': '4º Bim',
+  Recuperação: 'Rec.',
+  Final: 'Final',
+};
 
+/**
+ * Boletim do aluno: disciplinas nas linhas, períodos nas colunas e a média de cada
+ * disciplina como o número de destaque. Várias notas no mesmo período viram a média do período.
+ */
 export const StudentGrades: React.FC = () => {
   const [grades, setGrades] = useState<GradeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodFilter, setPeriodFilter] = useState('');
 
-  useEffect(() => {
-    gradeApi.list(1, 500)
-      .then((data: any) => setGrades((data as PagedResult<GradeItem>).items))
+  const fetchGrades = useCallback(() => {
+    listAll<GradeItem>((page, size) => gradeApi.list(page, size))
+      .then(data => {
+        setGrades(data.items);
+        setError(null);
+      })
       .catch(() => setError('Erro ao carregar notas.'))
       .finally(() => setLoading(false));
   }, []);
 
-  const periods = [...new Set(grades.map(g => g.period))].sort();
-  const filtered = periodFilter ? grades.filter(g => g.period === periodFilter) : grades;
+  useEffect(() => {
+    fetchGrades();
+  }, [fetchGrades]);
 
-  // agrupar por disciplina
-  const bySubject = filtered.reduce<Record<string, GradeItem[]>>((acc, g) => {
-    if (!acc[g.subject]) acc[g.subject] = [];
-    acc[g.subject].push(g);
-    return acc;
-  }, {});
+  const periodsWithData = [...new Set(grades.map(g => g.period))].sort(comparePeriods);
+  // Sempre os quatro bimestres; recuperação/final só quando existirem
+  const columns = (periodFilter ? [periodFilter] : [...new Set([...PERIODS.slice(0, 4), ...periodsWithData])].sort(comparePeriods));
 
-  const avgGrade = grades.length > 0 ? grades.reduce((s, g) => s + g.value, 0) / grades.length : null;
+  const subjects = [...new Set(grades.map(g => g.subject))].sort((a, b) => a.localeCompare(b));
+  const cell = (subject: string, period: string) => {
+    const values = grades.filter(g => g.subject === subject && g.period === period).map(g => g.value);
+    return { value: average(values), count: values.length };
+  };
+  const subjectAverage = (subject: string) => average(grades.filter(g => g.subject === subject).map(g => g.value));
+  const overall = average(grades.map(g => g.value));
 
-  if (loading) return <Loading />;
+  const header = (
+    <PageHeader
+      title="Minhas notas"
+      description={
+        overall !== null ? (
+          <span className="inline-flex items-baseline gap-2">
+            Média geral <GradeValue value={overall} size="md" />
+          </span>
+        ) : undefined
+      }
+    />
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <PageLoader label="Carregando notas…" rows={4} />
+      </>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Minhas Notas</h1>
-      {avgGrade !== null && (
-        <p className="text-gray-500 mb-8">
-          Média geral: <span className={`font-bold text-lg ${GRADE_COLOR(avgGrade)}`}>{avgGrade.toFixed(1)}</span>
-        </p>
+    <>
+      {header}
+      {error && (
+        <LoadError
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            fetchGrades();
+          }}
+        />
       )}
 
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
-
-      {periods.length > 1 && (
-        <div className="mb-6">
-          <select
-            value={periodFilter}
-            onChange={e => setPeriodFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 bg-white"
-          >
+      {periodsWithData.length > 1 && (
+        <FilterBar>
+          <FilterSelect label="Filtrar por período" value={periodFilter} onChange={setPeriodFilter}>
             <option value="">Todos os períodos</option>
-            {periods.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
+            {periodsWithData.map(p => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </FilterSelect>
+        </FilterBar>
       )}
 
-      {Object.keys(bySubject).length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          Nenhuma nota lançada ainda.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(bySubject).sort(([a], [b]) => a.localeCompare(b)).map(([subject, subjectGrades]) => {
-            const subjectAvg = subjectGrades.reduce((s, g) => s + g.value, 0) / subjectGrades.length;
-            return (
-              <div key={subject} className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="px-6 py-4 flex justify-between items-center border-b border-gray-100">
-                  <h2 className="text-lg font-semibold text-gray-800">{subject}</h2>
-                  <div className="text-right">
-                    <span className="text-xs text-gray-500">Média</span>
-                    <p className={`text-2xl font-bold ${GRADE_COLOR(subjectAvg)}`}>{subjectAvg.toFixed(1)}</p>
-                  </div>
-                </div>
-                <div className="px-6 py-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {subjectGrades.sort((a, b) => a.period.localeCompare(b.period)).map(g => (
-                      <div key={g.id} className={`border rounded-lg p-3 ${GRADE_BG(g.value)}`}>
-                        <p className="text-xs font-medium text-gray-500 mb-1">{g.period}</p>
-                        <p className={`text-3xl font-bold ${GRADE_COLOR(g.value)}`}>{g.value.toFixed(1)}</p>
-                        <p className="text-xs text-gray-400 mt-1">{g.className}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {!error && (
+        <>
+          <TableFrame caption="Boletim: notas por disciplina e período" minWidth={`${12 + columns.length * 6 + 7}rem`}>
+            <THead>
+              <Th sticky>Disciplina</Th>
+              {columns.map(p => (
+                <Th key={p} align="center">
+                  <abbr title={p} className="no-underline">
+                    {SHORT_PERIOD[p] ?? p}
+                  </abbr>
+                </Th>
+              ))}
+              <Th align="right">Média</Th>
+            </THead>
+            <TBody>
+              {subjects.length === 0 ? (
+                <TableEmptyRow colSpan={columns.length + 2}>
+                  <EmptyState icon={PenSquare} title="Nenhuma nota lançada ainda" compact>
+                    As notas aparecem aqui assim que os professores lançarem.
+                  </EmptyState>
+                </TableEmptyRow>
+              ) : (
+                subjects.map(subject => {
+                  const avg = subjectAverage(subject);
+                  return (
+                    <Tr key={subject}>
+                      <Td sticky strong className="whitespace-nowrap">
+                        {subject}
+                      </Td>
+                      {columns.map(p => {
+                        const c = cell(subject, p);
+                        return (
+                          <Td key={p} align="center">
+                            {c.value !== null ? (
+                              <span className="inline-flex flex-col items-center">
+                                <GradeValue value={c.value} size="md" />
+                                {c.count > 1 && <span className="text-[0.75rem] text-ink-3">média de {c.count}</span>}
+                              </span>
+                            ) : (
+                              <span className="text-ink-3" aria-label="sem nota">
+                                —
+                              </span>
+                            )}
+                          </Td>
+                        );
+                      })}
+                      <Td align="right" className="bg-paper">
+                        {avg !== null && <GradeValue value={avg} size="lg" />}
+                      </Td>
+                    </Tr>
+                  );
+                })
+              )}
+            </TBody>
+          </TableFrame>
+          <GradeLegend />
+        </>
       )}
-    </div>
+    </>
   );
 };

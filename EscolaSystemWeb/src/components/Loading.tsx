@@ -1,12 +1,10 @@
 import React from 'react';
+import { BrandMark } from './layout/BrandMark';
 
-export const Loading: React.FC = () => {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Carregando...</p>
-      </div>
-    </div>
-  );
-};
+/** Carregamento de tela inteira: só na verificação inicial da sessão. */
+export const Loading: React.FC<{ label?: string }> = ({ label = 'Carregando…' }) => (
+  <div role="status" aria-live="polite" className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-paper">
+    <BrandMark className="h-12 w-12 motion-safe:animate-pulse" />
+    <p className="text-[0.9375rem] text-ink-3">{label}</p>
+  </div>
+);

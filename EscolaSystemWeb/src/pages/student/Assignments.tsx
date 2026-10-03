@@ -1,155 +1,167 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { Loading } from '../../components/Loading';
-import type { PendingWorkItem, PagedResult } from '../../types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, Clock, ListTodo } from 'lucide-react';
+import type { PendingWorkItem } from '../../types';
 import { pendingWorkApi } from '../../services/api';
+import { listAll } from '../../lib/paging';
+import { Alert, Button, EmptyState, LoadError, PageHeader, PageLoader, Segmented, Stamp, useConfirm, useToast } from '../../components/ui';
+import { formatDate, plural } from '../../lib/format';
+import { cn } from '../../lib/cn';
 
-const isOverdue = (dueDate: string, isDelivered: boolean) =>
-  !isDelivered && new Date(dueDate + 'T23:59:59') < new Date();
+const isOverdue = (dueDate: string, isDelivered: boolean) => !isDelivered && new Date(dueDate + 'T23:59:59') < new Date();
+
+type Filter = 'all' | 'pending' | 'delivered';
 
 export const StudentAssignments: React.FC = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [works, setWorks] = useState<PendingWorkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'delivered'>('all');
+  // Abre no que o aluno precisa fazer: os pendentes
+  const [filter, setFilter] = useState<Filter>('pending');
   const [delivering, setDelivering] = useState<string | null>(null);
 
-  useEffect(() => { fetchWorks(); }, []);
-
-  const fetchWorks = async () => {
+  const fetchWorks = useCallback(async () => {
     try {
-      setLoading(true);
-      const data = await pendingWorkApi.list(1, 100) as PagedResult<PendingWorkItem>;
-      setWorks(data.items.sort((a, b) => a.dueDate.localeCompare(b.dueDate)));
+      const data = await listAll<PendingWorkItem>((page, size) => pendingWorkApi.list(page, size));
+      setWorks([...data.items].sort((a, b) => a.dueDate.localeCompare(b.dueDate)));
+      setError(null);
     } catch {
       setError('Erro ao carregar trabalhos.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleDeliver = async (id: string) => {
-    if (!window.confirm('Confirmar entrega deste trabalho?')) return;
-    setDelivering(id);
+  useEffect(() => {
+    fetchWorks();
+  }, [fetchWorks]);
+
+  const handleDeliver = async (work: PendingWorkItem) => {
+    const ok = await confirm({
+      title: 'Confirmar entrega deste trabalho?',
+      description: work.title,
+      confirmLabel: 'Confirmar entrega',
+      tone: 'primary',
+    });
+    if (!ok) return;
+    setDelivering(work.id);
     try {
-      await pendingWorkApi.markDelivered(id);
-      setWorks(prev => prev.map(w => w.id === id ? { ...w, isDelivered: true, deliveredAt: new Date().toISOString() } : w));
+      await pendingWorkApi.markDelivered(work.id);
+      setWorks(prev => prev.map(w => (w.id === work.id ? { ...w, isDelivered: true, deliveredAt: new Date().toISOString() } : w)));
+      toast.success('Entrega registrada.');
     } catch {
-      alert('Erro ao registrar entrega.');
+      toast.error('Erro ao registrar entrega.');
     } finally {
       setDelivering(null);
     }
   };
 
-  const filtered = works.filter(w => {
-    if (filter === 'pending') return !w.isDelivered;
-    if (filter === 'delivered') return w.isDelivered;
-    return true;
-  });
+  const filtered = works.filter(w => (filter === 'pending' ? !w.isDelivered : filter === 'delivered' ? w.isDelivered : true));
 
-  const pendingCount   = works.filter(w => !w.isDelivered).length;
+  const pendingCount = works.filter(w => !w.isDelivered).length;
   const deliveredCount = works.filter(w => w.isDelivered).length;
-  const overdueCount   = works.filter(w => isOverdue(w.dueDate, w.isDelivered)).length;
+  const overdueCount = works.filter(w => isOverdue(w.dueDate, w.isDelivered)).length;
 
-  if (loading) return <Loading />;
+  const header = (
+    <PageHeader
+      title="Trabalhos"
+      description={!loading && works.length > 0 ? `${plural(pendingCount, 'pendente', 'pendentes')} · ${plural(deliveredCount, 'entregue', 'entregues')}` : undefined}
+    />
+  );
+
+  if (loading) {
+    return (
+      <>
+        {header}
+        <PageLoader label="Carregando trabalhos…" rows={4} />
+      </>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Trabalhos</h1>
-
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <button
-          onClick={() => setFilter('pending')}
-          className={`rounded-lg shadow-md p-4 text-center transition-all ${filter === 'pending' ? 'ring-2 ring-blue-500' : ''} bg-white`}
-        >
-          <p className="text-sm text-gray-500">Pendentes</p>
-          <p className={`text-3xl font-bold ${pendingCount > 0 ? 'text-orange-500' : 'text-gray-400'}`}>{pendingCount}</p>
-        </button>
-        <button
-          onClick={() => setFilter('delivered')}
-          className={`rounded-lg shadow-md p-4 text-center transition-all ${filter === 'delivered' ? 'ring-2 ring-blue-500' : ''} bg-white`}
-        >
-          <p className="text-sm text-gray-500">Entregues</p>
-          <p className="text-3xl font-bold text-green-600">{deliveredCount}</p>
-        </button>
-        <button
-          onClick={() => setFilter('all')}
-          className={`rounded-lg shadow-md p-4 text-center transition-all ${filter === 'all' ? 'ring-2 ring-blue-500' : ''} bg-white`}
-        >
-          <p className="text-sm text-gray-500">Total</p>
-          <p className="text-3xl font-bold text-gray-700">{works.length}</p>
-        </button>
-      </div>
+    <>
+      {header}
+      {error && <LoadError message={error} onRetry={() => { setLoading(true); fetchWorks(); }} />}
 
       {overdueCount > 0 && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
-          <span className="text-sm font-medium">Você tem {overdueCount} trabalho{overdueCount > 1 ? 's' : ''} em atraso!</span>
-        </div>
+        <Alert tone="error" className="mb-5" title={`Você tem ${plural(overdueCount, 'trabalho em atraso', 'trabalhos em atraso')}.`}>
+          Entregue o quanto antes e avise o professor.
+        </Alert>
       )}
 
+      <div className="mb-5">
+        <Segmented<Filter>
+          label="Mostrar trabalhos"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'pending', label: 'Pendentes', count: pendingCount },
+            { value: 'delivered', label: 'Entregues', count: deliveredCount },
+            { value: 'all', label: 'Todos', count: works.length },
+          ]}
+        />
+      </div>
+
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center text-gray-500">
-          Nenhum trabalho encontrado.
+        <div className="rounded-lg border border-rule bg-surface">
+          <EmptyState icon={ListTodo} title={filter === 'pending' ? 'Nenhum trabalho pendente' : 'Nenhum trabalho encontrado'} compact />
         </div>
       ) : (
-        <div className="space-y-4">
+        <ul className="space-y-3">
           {filtered.map(work => {
             const overdue = isOverdue(work.dueDate, work.isDelivered);
             return (
-              <div
-                key={work.id}
-                className={`bg-white rounded-lg shadow-md p-5 border-l-4 ${
-                  work.isDelivered ? 'border-green-400' : overdue ? 'border-red-400' : 'border-orange-400'
-                }`}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-800">{work.title}</h3>
-                      {work.isDelivered && (
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">Entregue</span>
-                      )}
-                      {overdue && (
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Em atraso</span>
+              <li key={work.id} className={cn('rounded-lg border bg-surface', overdue ? 'border-red-ink/40' : 'border-rule')}>
+                <div className="flex flex-wrap items-start gap-4 px-5 py-4">
+                  <div className="min-w-0 flex-1 basis-64">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <h2 className="text-base font-bold text-ink">{work.title}</h2>
+                      {work.isDelivered ? (
+                        <Stamp tone="blue">Entregue</Stamp>
+                      ) : overdue ? (
+                        <Stamp tone="red">Em atraso</Stamp>
+                      ) : (
+                        <Stamp tone="amber">Pendente</Stamp>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">{work.description}</p>
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        Prazo: <strong className={overdue ? 'text-red-600' : 'text-gray-700'}>
-                          {new Date(work.dueDate + 'T12:00:00').toLocaleDateString('pt-BR')}
-                        </strong>
-                      </span>
-                      <span>Turma: {work.className}</span>
+                    {work.description && <p className="mt-1.5 text-[0.9375rem] text-ink-2">{work.description}</p>}
+                    <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-3">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4" aria-hidden="true" />
+                        <dt>Prazo</dt>
+                        <dd className={cn('figures font-semibold', overdue ? 'text-red-ink' : 'text-ink-2')}>{formatDate(work.dueDate)}</dd>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <dt>Turma</dt>
+                        <dd className="text-ink-2">{work.className}</dd>
+                      </div>
                       {work.isDelivered && work.deliveredAt && (
-                        <span className="text-green-600">
-                          Entregue em: {new Date(work.deliveredAt).toLocaleDateString('pt-BR')}
-                        </span>
+                        <div className="flex gap-1.5">
+                          <dt>Entregue em</dt>
+                          <dd className="figures text-blue-ink">{formatDate(work.deliveredAt)}</dd>
+                        </div>
                       )}
-                    </div>
+                    </dl>
                   </div>
 
                   {!work.isDelivered && (
-                    <button
-                      onClick={() => handleDeliver(work.id)}
-                      disabled={delivering === work.id}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
+                    <Button
+                      variant="secondary"
+                      icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
+                      onClick={() => handleDeliver(work)}
+                      loading={delivering === work.id}
+                      loadingLabel="Confirmando…"
                     >
-                      <CheckCircle className="w-4 h-4" />
-                      {delivering === work.id ? 'Confirmando...' : 'Marcar entregue'}
-                    </button>
+                      Marcar como entregue
+                    </Button>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </>
   );
 };
