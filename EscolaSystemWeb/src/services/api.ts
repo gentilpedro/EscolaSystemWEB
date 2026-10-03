@@ -76,9 +76,14 @@ class ApiService {
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
+        // 401 no próprio login é "credenciais inválidas": a tela de login mostra a mensagem.
+        // Nas demais, só redireciona se havia sessão (expirou ou foi invalidada).
+        if (response.status === 401 && !endpoint.startsWith('/auth/login')) {
+          const hadSession = this.token !== null;
           this.clearToken();
-          window.location.href = '/login';
+          if (hadSession && window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         
         const error = await response.json().catch(() => ({

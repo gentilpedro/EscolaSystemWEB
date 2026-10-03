@@ -22,7 +22,9 @@ export const Login: React.FC = () => {
       const role = await login(email, password);
       navigate(`/${role}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao fazer login');
+      // Sem resposta do servidor o fetch lança TypeError ("Failed to fetch")
+      if (err instanceof TypeError) setError('Não foi possível conectar ao servidor. Verifique a conexão e tente de novo.');
+      else setError(err instanceof Error ? err.message : 'Erro ao fazer login');
     } finally {
       setLoading(false);
     }

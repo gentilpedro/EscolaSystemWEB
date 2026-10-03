@@ -46,7 +46,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
   - Lista de pendentes: `GET /api/disciplinary-calls?status=1`.
 - **Aceite:** os números batem com o banco, independentemente do tamanho da escola.
 
-### 6. Senha errada mostra a mensagem
+### 6. ~~Senha errada mostra a mensagem~~ (resolvido na #7)
 - **Onde:** `src/services/api.ts` (tratamento de 401)
 - **Problema:** todo 401 limpa o token e faz `window.location.href = '/login'`. No login com senha errada, a página recarrega e "Credenciais inválidas" some.
 - **Correção:** não redirecionar quando a requisição é `/auth/login`. Nas demais, redirecionar só se havia sessão.
