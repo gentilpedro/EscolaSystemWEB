@@ -29,7 +29,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
   - Em Admin › Usuários, oferecer só **Administrador** e **Diretor**, com Diretor como padrão.
 - **Aceite:** o diretor dá acesso a um aluno e a um responsável, e os dois conseguem logar e ver os seus dados.
 
-### 4. Paginação real em vez de listas cortadas
+### 4. ~~Paginação real em vez de listas cortadas~~ (resolvido na #5)
 - **Onde:** `src/lib/paging.ts`, usado agora por quase todas as telas (painéis, relatórios, chamada, notas, ocorrências)
 - **Problema:** a API limita `pageSize` a 500. O `listAll` pede 1000 e, se faltar, repete com `pageSize = totalCount`, que a API também corta em 500. Ele nunca pede a página 2. Teste real: 500 de 600 presenças. Como a reformulação passou a usar o `listAll` em todo lugar, o corte atinge todas essas telas.
 - **Correção:** o `listAll` percorre `page = 1..totalPages` com `pageSize = 500` e junta os itens.
