@@ -114,6 +114,6 @@ Decisões já tomadas:
 ### 17. Qualidade do repositório
 - 49 erros de lint, 27 deles `any` no `api.ts`. Tipar a partir do OpenAPI da API (`/openapi/v1.json`).
 - Remover de `types/index.ts` os tipos antigos sem uso (`Class`, `Student`, `Grade`, `Attendance`, `DisciplinaryReport`), que têm campos diferentes dos da API.
-- Criar o CI no GitHub Actions (lint, tipos e build) e torná-lo obrigatório na proteção do `master`.
+- O CI já existe (`.github/workflows/ci-cd.yml`). O build no CI só passa depois do item 1. Depois disso, tornar o lint bloqueante e o check obrigatório na proteção do `master`.
 - Avaliar trocar o token em `localStorage` por cookie httpOnly.
 - O repositório tem uma branch `main` sem histórico comum com o `master`, com commits de CI antigos. A branch padrão é o `master`; decidir se a `main` deve ser apagada.
