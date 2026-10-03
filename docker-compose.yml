@@ -1,0 +1,103 @@
+# Ambiente de DEMONSTRAÇÃO do EscolaSystem: banco + API + front + seed de dados.
+#
+# Pré-requisito: o repositório da API clonado ao lado deste, como `escolasystemapi`:
+#   EscolaSystem/
+#   ├── escolasystemapi/   (github.com/gentilpedro/EscolaSystemAPI)
+#   └── escolasystemweb/   (este repositório)
+#
+# Subir:   docker compose up -d           (a primeira vez demora: restore do .NET e npm ci)
+# Front:   http://localhost:3000
+# API:     http://localhost:5130          (documentação em /scalar/v1)
+# Banco:   localhost:5434                 (usuário escolasystem / senha escolasystem-demo)
+#
+# Logins, portas e detalhes: docker/README.md
+# As chaves e senhas abaixo são só para demonstração local. Não use em produção.
+name: escolasystem-demo
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: EscolaSystem
+      POSTGRES_USER: escolasystem
+      POSTGRES_PASSWORD: escolasystem-demo
+    ports:
+      - "5434:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U escolasystem -d EscolaSystem"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    working_dir: /app
+    # Copia o código da API para dentro do container sem bin/obj do host (que são do Windows)
+    # e roda com `dotnet run`; migrations e o usuário admin são aplicados na inicialização.
+    command: >
+      bash -c "tar -C /src --exclude=bin --exclude=obj --exclude=logs -cf - EscolaSystemApi | tar -C /app -xf -
+      && cd /app/EscolaSystemApi && dotnet run --no-launch-profile"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: "*"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=EscolaSystem;Username=escolasystem;Password=escolasystem-demo
+      Jwt__Key: demo-escolasystem-chave-jwt-somente-para-demonstracao-local-2026
+      Cpf__EncryptionKey: demo-escolasystem-chave-cpf-somente-para-demonstracao
+      Cors__AllowedOrigins__0: http://localhost:3000
+    ports:
+      - "5130:8080"
+    volumes:
+      - ../escolasystemapi:/src:ro
+      - nuget-cache:/root/.nuget/packages
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # A porta só abre depois das migrations e do seed do admin
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 60s
+
+  web:
+    image: node:22-alpine
+    working_dir: /app
+    # Copia o front sem node_modules/dist do host, instala, gera o build de produção e serve com vite preview
+    command: >
+      sh -c "tar -C /src --exclude=node_modules --exclude=dist -cf - . | tar -C /app -xf -
+      && npm ci --no-audit --no-fund && npm run build && npm run preview -- --host 0.0.0.0 --port 3000 --strictPort"
+    environment:
+      # Endereço que o NAVEGADOR usa para chegar na API (porta publicada no host)
+      VITE_API_URL: http://localhost:5130/api
+      # O vite.config pede para abrir o navegador; no container não há navegador
+      BROWSER: none
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./EscolaSystemWeb:/src:ro
+      - npm-cache:/root/.npm
+    depends_on:
+      api:
+        condition: service_healthy
+
+  seed:
+    image: node:22-alpine
+    # Popula a escola de demonstração pela própria API. Se a escola já existir, não faz nada.
+    command: node /seed/demo.mjs
+    environment:
+      API_URL: http://api:8080/api
+    volumes:
+      - ./docker/seed:/seed:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  db-data:
+  nuget-cache:
+  npm-cache:
