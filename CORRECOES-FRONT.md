@@ -11,11 +11,8 @@ Decisões já tomadas:
 
 ## Prioridade crítica
 
-### 1. Corrigir o build
-- **Onde:** `src/pages/admin/Users.tsx:207`
-- **Problema:** `tone="positive"` não existe no `IconButton`, então `tsc -b` falha e `npm run build` não gera nada.
-- **Correção:** usar um tom existente ou adicionar `positive` ao `IconButton`.
-- **Aceite:** `npm run build` termina sem erro.
+### 1. ~~Corrigir o build~~ (resolvido na reformulação)
+O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da reformulação; `tsc -b` e `npm run build` passam.
 
 ### 2. Apontar para a porta certa da API
 - **Onde:** `src/services/api.ts:3`
@@ -33,16 +30,16 @@ Decisões já tomadas:
 - **Aceite:** o diretor dá acesso a um aluno e a um responsável, e os dois conseguem logar e ver os seus dados.
 
 ### 4. Paginação real em vez de listas cortadas
-- **Onde:** `src/lib/paging.ts`, `pages/teacher/Grades.tsx`, `pages/director/Students.tsx`, `pages/orientador/*`, `pages/director/Reports.tsx`
-- **Problema:** a API limita `pageSize` a 500. O `listAll` pede 1000 e não busca a página seguinte. Outras telas pedem 200 ou 500 fixos. Teste real: 500 de 600 presenças, e as notas do professor cortam em 500.
-- **Correção:** o `listAll` percorre `page = 1..totalPages` com `pageSize = 500`, e as telas usam o `listAll` em vez de tamanhos fixos.
+- **Onde:** `src/lib/paging.ts`, usado agora por quase todas as telas (painéis, relatórios, chamada, notas, ocorrências)
+- **Problema:** a API limita `pageSize` a 500. O `listAll` pede 1000 e, se faltar, repete com `pageSize = totalCount`, que a API também corta em 500. Ele nunca pede a página 2. Teste real: 500 de 600 presenças. Como a reformulação passou a usar o `listAll` em todo lugar, o corte atinge todas essas telas.
+- **Correção:** o `listAll` percorre `page = 1..totalPages` com `pageSize = 500` e junta os itens.
 - **Aceite:** com mais de 500 registros, a tela mostra o total igual ao `totalCount` da API.
 
 ## Prioridade alta
 
 ### 5. Relatórios e painéis calculados pela API
 - **Onde:** `pages/director/Reports.tsx`, `pages/director/Dashboard.tsx`, `pages/teacher/Dashboard.tsx`, `pages/orientador/Dashboard.tsx`, `pages/student/Dashboard.tsx`
-- **Problema:** os números saem de listas parciais. O relatório usa as primeiras 200 notas e 500 presenças da escola, e os painéis contam pendências só entre as 20 ocorrências mais recentes.
+- **Problema:** os painéis e o relatório baixam todas as notas, presenças e ocorrências da escola para somar no navegador. Funciona em escola pequena, mas fica lento à medida que o histórico cresce, e herda o corte do item 4.
 - **Correção:**
   - Relatórios: `GET /api/reports/classes` (alunos, média, frequência e ocorrências por turma).
   - Painéis: `GET /api/dashboard/stats` (turmas, alunos, funcionários, ocorrências pendentes, trabalhos pendentes, média e frequência no escopo do usuário).
@@ -82,8 +79,8 @@ Decisões já tomadas:
 
 ### 11. Filtros e busca no servidor
 - **Onde:** `admin/Users.tsx`, `director/Staff.tsx`
-- **Problema:** a busca e o filtro de perfil olham só a página carregada; Funcionários busca 100 usuários e filtra no navegador.
-- **Correção:** enviar `roleId` e `schoolId` em `GET /api/users`. A busca por nome no servidor ainda não existe na API; até lá, buscar com o `listAll`.
+- **Problema:** com a reformulação, a busca já usa a lista inteira via `listAll`, mas baixa todos os usuários para filtrar no navegador.
+- **Correção:** enviar `roleId` e `schoolId` em `GET /api/users`. A busca por nome no servidor ainda não existe na API.
 
 ### 12. Tela de trabalhos do professor
 - **Onde:** novo, em `pages/teacher/`
@@ -112,8 +109,8 @@ Decisões já tomadas:
 - **Problema:** mostra `admin@escolar.com`; o usuário semeado é `admin@escolasystem.com` / `Admin@123`.
 
 ### 17. Qualidade do repositório
-- 49 erros de lint, 27 deles `any` no `api.ts`. Tipar a partir do OpenAPI da API (`/openapi/v1.json`).
+- Avisos de lint herdados, a maioria `any` no `api.ts`. Tipar a partir do OpenAPI da API (`/openapi/v1.json`).
 - Remover de `types/index.ts` os tipos antigos sem uso (`Class`, `Student`, `Grade`, `Attendance`, `DisciplinaryReport`), que têm campos diferentes dos da API.
-- O CI já existe (`.github/workflows/ci-cd.yml`). O build no CI só passa depois do item 1. Depois disso, tornar o lint bloqueante e o check obrigatório na proteção do `master`.
+- O CI já existe (`.github/workflows/ci-cd.yml`) e o build passa. Falta tornar o lint bloqueante e o check obrigatório na proteção do `master`.
 - Avaliar trocar o token em `localStorage` por cookie httpOnly.
 - O repositório tem uma branch `main` sem histórico comum com o `master`, com commits de CI antigos. A branch padrão é o `master`; decidir se a `main` deve ser apagada.
