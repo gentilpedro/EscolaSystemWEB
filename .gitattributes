@@ -1,0 +1,9 @@
+# Finais de linha sempre em LF no repositório (o checkout no Windows pode usar CRLF)
+* text=auto eol=lf
+
+# Binários
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
