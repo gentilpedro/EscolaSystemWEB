@@ -14,7 +14,7 @@ Decisões já tomadas:
 ### 1. ~~Corrigir o build~~ (resolvido na reformulação)
 O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da reformulação; `tsc -b` e `npm run build` passam.
 
-### 2. Apontar para a porta certa da API
+### 2. ~~Apontar para a porta certa da API~~ (resolvido na #3)
 - **Onde:** `src/services/api.ts:3`
 - **Problema:** sem `VITE_API_URL`, o padrão é `http://localhost:3001/api`. A API roda em `http://localhost:5130`.
 - **Correção:** trocar o padrão para `http://localhost:5130/api`, como diz o `PRODUCT.md`, e versionar um `.env.example` com `VITE_API_URL=http://localhost:5130/api`.
