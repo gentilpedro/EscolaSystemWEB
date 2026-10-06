@@ -1,64 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import type { ApiSessionUser, User, UserRole } from '../types';
-import { authApi, api } from '../services/api';
+import { authApi, api, hasSessionCookie } from '../services/api';
 import { AuthContext } from './auth';
 
+// A API manda o perfil como "Teacher"; a sessão usa os valores de UserRole ("teacher")
+const normalizeUser = (raw: ApiSessionUser): User => ({
+  id: raw.id,
+  name: raw.name,
+  email: raw.email,
+  role: raw.role.toLowerCase() as UserRole,
+  schoolId: raw.schoolId ?? undefined,
+  phone: raw.phone ?? undefined,
+});
 
-
+/**
+ * Sessão do usuário. Os tokens ficam em cookies httpOnly da API, fora do alcance do JavaScript:
+ * o front só sabe quem está logado perguntando a /auth/me.
+ */
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // A API manda o perfil como "Teacher"; a sessão usa os valores de UserRole ("teacher")
-  const normalizeUser = (raw: ApiSessionUser): User => ({
-    id: raw.id,
-    name: raw.name,
-    email: raw.email,
-    role: raw.role.toLowerCase() as UserRole,
-    schoolId: raw.schoolId ?? undefined,
-    phone: raw.phone ?? undefined,
-  });
-
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          api.setToken(token);
-          const userData = await authApi.me();
-          setUser(normalizeUser(userData));
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-          localStorage.removeItem('token');
-        }
-      }
-      setLoading(false);
-    };
+    // Sessão encerrada no meio do uso (expirou, logout em outra aba, conta desativada): volta para o login
+    api.onSessionExpired = () => setUser(null);
 
-    checkAuth();
+    // Ao abrir a página: se os cookies ainda valem (ou o refresh renova), já entra logado.
+    // Sem cookie de sessão, nem pergunta (evita duas requisições com erro para quem só visita a home).
+    (hasSessionCookie() ? authApi.me() : Promise.reject(new Error('sem sessão')))
+      .then(data => setUser(normalizeUser(data)))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+
+    return () => {
+      api.onSessionExpired = null;
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<UserRole> => {
-    try {
-      const response = await authApi.login(email, password);
-      api.setToken(response.token);
-      const user = normalizeUser(response.user);
-      setUser(user);
-      return user.role;
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    }
+    const response = await authApi.login(email, password);
+    const sessionUser = normalizeUser(response.user);
+    setUser(sessionUser);
+    return sessionUser.role;
   };
 
   const logout = async () => {
-    // Revoga o token na API; sem rede (ou token já expirado) a saída local acontece mesmo assim
+    // A API revoga a sessão e apaga os cookies; sem rede, a saída local acontece mesmo assim
     try {
-      if (api.getToken()) await authApi.logout();
+      await authApi.logout();
     } catch {
       /* a sessão local é encerrada abaixo de qualquer forma */
     } finally {
-      api.clearToken();
       setUser(null);
     }
   };

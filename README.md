@@ -74,12 +74,32 @@ Em modo de desenvolvimento, a tela de login mostra os e-mails de teste. Em produ
 |---|---|
 | Administração | `/admin`, `/admin/schools`, `/admin/users`, `/admin/settings` |
 | Direção | `/director`, `/director/staff`, `/director/classes`, `/director/students`, `/director/reports`, `/director/disciplinary` |
-| Professor | `/teacher`, `/teacher/classes`, `/teacher/attendance`, `/teacher/grades`, `/teacher/disciplinary` |
+| Professor | `/teacher`, `/teacher/classes`, `/teacher/attendance`, `/teacher/grades`, `/teacher/assignments`, `/teacher/reports`, `/teacher/disciplinary` |
 | Orientação | `/orientador`, `/orientador/students`, `/orientador/attendance`, `/orientador/grades`, `/orientador/disciplinary` |
 | Responsável | `/parent`, `/parent/disciplinary` |
 | Aluno | `/student`, `/student/grades`, `/student/attendance`, `/student/assignments` |
 
 As páginas públicas são `/` (apresentação) e `/login`.
+
+### Sessão e segurança
+
+O front não guarda token. A API grava a sessão em cookies `HttpOnly` que o JavaScript não lê, e o `services/api.ts`:
+
+- manda toda requisição com `credentials: 'include'`;
+- em POST, PUT, PATCH e DELETE, repete o valor do cookie `es_csrf` no cabeçalho `X-CSRF-Token` (proteção CSRF);
+- quando recebe 401, chama `POST /api/auth/refresh` uma vez (requisições simultâneas esperam a mesma renovação) e repete a requisição. Se a renovação falhar, a sessão acabou e o usuário volta ao login.
+
+Ao abrir a página, o `AuthContext` pergunta a `/api/auth/me` quem está logado. Sem o cookie `es_csrf`, que existe só enquanto há sessão, nem pergunta.
+
+Front e API precisam estar no mesmo site para os cookies `SameSite=Strict` irem junto: `localhost` em qualquer porta no desenvolvimento, ou subdomínios do mesmo domínio em produção (ex.: `app.escola.com.br` e `api.escola.com.br`, com `Auth:CookieDomain=escola.com.br` na API). A origem do front precisa estar em `Cors:AllowedOrigins` da API.
+
+**Content-Security-Policy.** O `npm run preview` (e o Docker) manda o cabeçalho definido em `vite.config.ts`: scripts, estilos e fontes só da própria origem e chamadas só para a API de `VITE_API_URL`. Em produção, o servidor que entrega o `dist/` deve mandar o mesmo cabeçalho, por exemplo no nginx:
+
+```nginx
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.escola.com.br; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header X-Content-Type-Options nosniff always;
+add_header Referrer-Policy strict-origin-when-cross-origin always;
+```
 
 ## Fluxo de trabalho
 
