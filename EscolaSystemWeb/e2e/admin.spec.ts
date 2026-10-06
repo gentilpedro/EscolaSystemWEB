@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ACCOUNTS, API_URL, loginAs, openDialog } from './support';
+import { ACCOUNTS, API_URL, apiPost, apiToken, loginAs, openDialog, uniqueSuffix } from './support';
 
 const apiTokenStatus = async (email: string, password: string) =>
   (await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })).status;
@@ -112,4 +112,28 @@ test.describe('Senhas pelo admin', () => {
     await change('Nova@2026x', ACCOUNTS.admin.password);
     await expect(page.getByText('Senha trocada.')).toBeVisible();
   });
+});
+
+test('painel aponta escola sem diretor e leva ao cadastro com a escola escolhida', async ({ page }) => {
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  const school = await apiPost<{ id: string; name: string }>(admin, '/schools', {
+    name: `Escola Sem Diretor ${suffix}`,
+    address: 'Rua Nova, 10',
+    phone: '(51) 3333-5555',
+    email: `sem.diretor.${suffix}@escola.com.br`,
+  });
+  expect(school.status).toBe(201);
+
+  await loginAs(page, 'admin');
+  const attention = page.getByRole('region', { name: 'Escolas ativas sem diretor' });
+  await expect(attention).toBeVisible();
+  // A lista mostra até 5; a escola nova pode estar entre as do "e mais"
+  const link = attention.getByRole('link', { name: `Cadastrar diretor ${school.body.name}` });
+  if ((await link.count()) === 0) test.skip(true, 'Mais de 5 escolas sem diretor na base: a nova ficou no "e mais"');
+  await link.click();
+
+  const dialog = openDialog(page);
+  await expect(dialog.getByLabel('Perfil')).toHaveValue('2');
+  await expect(dialog.getByLabel('Escola')).toHaveValue(school.body.id);
 });
