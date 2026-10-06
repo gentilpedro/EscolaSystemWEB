@@ -246,7 +246,9 @@ export const AdminUsers: React.FC = () => {
                       <Td align="right">
                         <RowActions
                           destructive={
-                            user.isActive && (
+                            // Ninguém desativa a própria conta (a API também recusa)
+                            user.isActive &&
+                            user.id !== sessionUser?.id && (
                               <IconButton
                                 tone="danger"
                                 label={`Desativar ${user.name}`}
@@ -295,6 +297,7 @@ export const AdminUsers: React.FC = () => {
       {showModal && (
         <UserModal
           user={editingUser}
+          isSelf={editingUser !== null && editingUser.id === sessionUser?.id}
           onClose={() => setShowModal(false)}
           onSave={() => {
             toast.success(editingUser ? 'Usuário atualizado.' : 'Usuário criado.');
@@ -309,11 +312,13 @@ export const AdminUsers: React.FC = () => {
 
 interface UserModalProps {
   user: UserListItem | null;
+  /** Editando a própria conta: perfil e situação não mudam por aqui */
+  isSelf?: boolean;
   onClose: () => void;
   onSave: () => void;
 }
 
-const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
+const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, onClose, onSave }) => {
   const currentRole = ROLES.find(r => r.name === user?.role);
   // Na edição, o perfil atual continua na lista mesmo que seja da escola (a API não troca para perfil da escola)
   const roleOptions = currentRole && !PLATFORM_ROLES.includes(currentRole) ? [...PLATFORM_ROLES, currentRole] : PLATFORM_ROLES;
@@ -393,13 +398,20 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         required
       />
       {!user && <NewPasswordField value={formData.password} onChange={v => setFormData({ ...formData, password: v })} />}
-      <SelectField label="Perfil" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
-        {roleOptions.map(r => (
-          <option key={r.id} value={r.id}>
-            {r.label}
-          </option>
-        ))}
-      </SelectField>
+      {isSelf ? (
+        <ReadOnlyField label="Perfil">
+          {currentRole?.label ?? user?.role}
+          <span className="mt-1 block text-[0.8125rem] text-ink-3">Outro administrador pode mudar o seu perfil.</span>
+        </ReadOnlyField>
+      ) : (
+        <SelectField label="Perfil" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
+          {roleOptions.map(r => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </SelectField>
+      )}
 
       {multiSchool && formData.roleId === currentRole?.id ? (
         <ReadOnlyField label={user?.schools && user.schools.length > 1 ? 'Escolas' : 'Escola'}>
@@ -427,7 +439,9 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         </SelectField>
       )}
 
-      {user && <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />}
+      {user && !isSelf && (
+        <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
+      )}
     </FormDialog>
   );
 };

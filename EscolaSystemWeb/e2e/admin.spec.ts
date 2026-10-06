@@ -19,6 +19,19 @@ test.describe('Administração', () => {
     await expect(page.getByRole('cell', { name: 'orientacao@escolademo.com.br' })).toBeVisible();
   });
 
+  test('a própria conta não tem desativar nem troca de perfil', async ({ page }) => {
+    await page.getByLabel('Pesquisar usuários').fill('admin@escolasystem.com');
+    const row = page.getByRole('row', { name: /admin@escolasystem\.com/ });
+    await expect(row.getByRole('button', { name: 'Editar Administrador' })).toBeVisible();
+    await expect(row.getByRole('button', { name: /^Desativar/ })).toHaveCount(0);
+    await expect(row.getByRole('button', { name: /^Redefinir senha/ })).toHaveCount(0);
+
+    await row.getByRole('button', { name: 'Editar Administrador' }).click();
+    const dialog = openDialog(page);
+    await expect(dialog.getByText('Outro administrador pode mudar o seu perfil.')).toBeVisible();
+    await expect(dialog.getByLabel('Usuário ativo')).toHaveCount(0);
+  });
+
   test('cadastro de escola valida os campos e mascara o telefone', async ({ page }) => {
     await page.goto('/admin/schools');
     await page.getByRole('button', { name: 'Nova escola' }).click();
