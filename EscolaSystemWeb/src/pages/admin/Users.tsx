@@ -310,7 +310,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
     schoolId: user?.schoolId ?? '',
     isActive: user?.isActive ?? true,
   });
-  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
+  const [schools, setSchools] = useState<School[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [schoolsFailed, setSchoolsFailed] = useState(false);
@@ -398,11 +398,15 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
           required
         >
           <option value="">Selecione a escola…</option>
-          {schools.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
+          {/* Escola desativada não recebe ninguém novo; na edição, a escola atual aparece mesmo inativa */}
+          {schools
+            .filter(s => s.isActive || s.id === user?.schoolId)
+            .map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.isActive ? '' : ' (inativa)'}
+              </option>
+            ))}
         </SelectField>
       )}
 
