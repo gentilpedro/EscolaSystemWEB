@@ -37,86 +37,89 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, QueryValue>;
 }
 
+/** Cookie que a API emite no login; o valor volta no cabeçalho X-CSRF-Token (double submit). */
+const CSRF_COOKIE = 'es_csrf';
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** Rotas de sessão: um 401 delas não dispara a renovação automática. */
+const SESSION_ENDPOINTS = ['/auth/login', '/auth/refresh', '/auth/logout'];
+
+function readCookie(name: string): string | undefined {
+  const prefix = `${name}=`;
+  const entry = document.cookie.split('; ').find(c => c.startsWith(prefix));
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : undefined;
+}
+
+/** O cookie de CSRF vive o mesmo tempo que a sessão: sem ele, não há sessão para recuperar. */
+export function hasSessionCookie(): boolean {
+  return readCookie(CSRF_COOKIE) !== undefined;
+}
+
+/**
+ * Cliente da API. A sessão mora em cookies httpOnly que o JavaScript não lê: as requisições vão com
+ * `credentials: 'include'` e o navegador envia os cookies. Quando o token de acesso expira (401),
+ * a sessão é renovada uma vez e a requisição é repetida.
+ */
 class ApiService {
   private baseURL: string;
-  private token: string | null = null;
+  // Uma renovação por vez: requisições que recebem 401 juntas esperam a mesma
+  private refreshing: Promise<boolean> | null = null;
+  /** Chamado quando a sessão acabou de vez (renovação recusada). */
+  onSessionExpired: (() => void) | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
-    this.token = localStorage.getItem('token');
-  }
-
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('token', token);
-  }
-
-  getToken() {
-    return this.token;
-  }
-
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem('token');
   }
 
   private buildUrl(endpoint: string, params?: Record<string, QueryValue>): string {
-    let url = `${this.baseURL}${endpoint}`;
-    
-    if (params) {
-      const queryParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, String(value));
-        }
-      });
-      const queryString = queryParams.toString();
-      if (queryString) {
-        url += `?${queryString}`;
-      }
+    const url = `${this.baseURL}${endpoint}`;
+    if (!params) return url;
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) query.append(key, String(value));
     }
-    
-    return url;
+    const qs = query.toString();
+    return qs ? `${url}?${qs}` : url;
   }
 
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
-
+  private headers(method: string): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const csrf = UNSAFE_METHODS.has(method) ? readCookie(CSRF_COOKIE) : undefined;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
     return headers;
   }
 
-    async request<T = unknown>(
-    endpoint: string,
-    options?: RequestOptions
-  ): Promise<T> {
+  /** Troca o refresh token por um par novo. 409 = outra aba renovou um instante antes: os cookies já são os novos. */
+  private refreshSession(): Promise<boolean> {
+    this.refreshing ??= fetch(this.buildUrl('/auth/refresh'), { method: 'POST', credentials: 'include', headers: this.headers('POST') })
+      .then(r => r.ok || r.status === 409)
+      .catch(() => false)
+      .finally(() => {
+        this.refreshing = null;
+      });
+    return this.refreshing;
+  }
+
+  async request<T = unknown>(endpoint: string, options?: RequestOptions, isRetry = false): Promise<T> {
     const { params, ...fetchOptions } = options || {};
-    const url = this.buildUrl(endpoint, params);
-    const headers = this.getHeaders();
+    const method = (fetchOptions.method ?? 'GET').toUpperCase();
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(this.buildUrl(endpoint, params), {
         ...fetchOptions,
-        headers,
+        method,
+        credentials: 'include',
+        headers: this.headers(method),
       });
 
       if (!response.ok) {
-        // 401 no próprio login é "credenciais inválidas": a tela de login mostra a mensagem.
-        // No logout o token já está saindo. Nas demais, só redireciona se havia sessão (expirou ou foi invalidada).
-        if (response.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/logout')) {
-          const hadSession = this.token !== null;
-          this.clearToken();
-          if (hadSession && window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
+        // 401 no login é "credenciais inválidas" e a tela mostra a mensagem; nas demais, o token de acesso
+        // venceu ou a sessão foi encerrada: tenta renovar uma vez e repete
+        if (response.status === 401 && !isRetry && !SESSION_ENDPOINTS.some(e => endpoint.startsWith(e))) {
+          if (await this.refreshSession()) return this.request<T>(endpoint, options, true);
+          this.onSessionExpired?.();
         }
-        
-                // Erros da API trazem { error, message }; sem corpo legível, fica o status
+
+        // Erros da API trazem { error, message }; sem corpo legível, fica o status
         const body: { message?: string } = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(body.message || `HTTP Error: ${response.status}`);
       }
@@ -131,54 +134,24 @@ class ApiService {
     }
   }
 
-  async get<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'GET',
-    });
+  get<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-    async post<T = unknown>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  post<T = unknown>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'POST', body: data === undefined ? undefined : JSON.stringify(data) });
   }
 
-    async put<T = unknown>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+  put<T = unknown>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'PUT', body: data === undefined ? undefined : JSON.stringify(data) });
   }
 
-    async patch<T = unknown>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+  patch<T = unknown>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'PATCH', body: data === undefined ? undefined : JSON.stringify(data) });
   }
 
-  async delete<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'DELETE',
-    });
+  delete<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
 

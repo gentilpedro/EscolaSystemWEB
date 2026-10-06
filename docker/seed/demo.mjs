@@ -20,7 +20,13 @@ const MIN_INTERVAL_MS = 330;
 let lastCall = 0;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// O login grava o token de acesso num cookie httpOnly. Aqui o script lê esse cookie e manda o token no
+// cabeçalho Authorization (aceito pela API para ferramentas, sem exigir CSRF). O token de acesso vale
+// 15 minutos: cada login vira uma "sessão" que refaz o login sozinha quando o token vence.
+const sessions = new Map();
+
 async function call(method, path, { token, body } = {}) {
+  const session = token ? sessions.get(token) : undefined;
   for (let attempt = 1; ; attempt++) {
     const wait = lastCall + MIN_INTERVAL_MS - Date.now();
     if (wait > 0) await sleep(wait);
@@ -30,7 +36,7 @@ async function call(method, path, { token, body } = {}) {
     try {
       res = await fetch(`${API}${path}`, {
         method,
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch (err) {
@@ -46,6 +52,11 @@ async function call(method, path, { token, body } = {}) {
       continue;
     }
 
+    if (res.status === 401 && session && attempt < 3) {
+      session.accessToken = await fetchAccessToken(session.email, session.password);
+      continue;
+    }
+
     const text = await res.text();
     const data = text ? JSON.parse(text) : undefined;
     if (!res.ok) {
@@ -55,9 +66,31 @@ async function call(method, path, { token, body } = {}) {
   }
 }
 
+async function fetchAccessToken(email, password) {
+  for (let attempt = 1; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (err) {
+      if (attempt >= 30) throw err;
+      await sleep(2000); // API ainda subindo
+      continue;
+    }
+    if (!res.ok) throw new Error(`login de ${email} → ${res.status}: ${await res.text()}`);
+    const cookie = res.headers.getSetCookie().find(c => c.startsWith('es_access='));
+    if (!cookie) throw new Error(`login de ${email} não devolveu o cookie de acesso`);
+    return cookie.slice('es_access='.length).split(';')[0];
+  }
+}
+
+/** Devolve um identificador de sessão para passar como `token` em `call`. */
 async function login(email, password) {
-  const data = await call('POST', '/auth/login', { body: { email, password } });
-  return data.token;
+  sessions.set(email, { email, password, accessToken: await fetchAccessToken(email, password) });
+  return email;
 }
 
 /* ---------------- Dados determinísticos ---------------- */

@@ -62,6 +62,10 @@ A seed (`docker/seed/demo.mjs`) usa a própria API, com as mesmas regras de perf
 - Dois trabalhos por aluno: um vencido e um com prazo à frente
 - Quatro chamados disciplinares: dois pendentes, um aprovado pela direção e um rejeitado pela orientação
 
+A seed entra com cada perfil pelo `POST /api/auth/login`, lê o token de acesso do cookie `es_access` e o envia no cabeçalho `Authorization`. A API aceita esse cabeçalho de ferramentas e scripts, sem exigir o CSRF que o navegador usa. Quando o token de 15 minutos vence, a seed entra de novo sozinha.
+
+No navegador, a sessão fica em cookies `HttpOnly`: front (`localhost:3000`) e API (`localhost:5130`) estão no mesmo site, e a API roda em Development, então os cookies funcionam sem HTTPS. O front servido aqui manda a Content-Security-Policy de `vite.config.ts`.
+
 Os dados são fixos e se repetem a cada ambiente novo. Se a escola de demonstração já existir, a seed não faz nada. Para rodar de novo num banco que já tem a seed:
 
 ```bash
