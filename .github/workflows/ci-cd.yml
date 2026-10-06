@@ -48,12 +48,8 @@ jobs:
             echo "has_lint=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # O lint ainda tem pendências herdadas (any em services/api.ts e o padrão de busca
-      # ao montar nas páginas). Ele roda e aparece no log, mas não bloqueia o merge até
-      # essas pendências serem resolvidas numa issue própria; aí basta remover esta linha.
       - name: Lint
         if: steps.check_lint.outputs.has_lint == 'true'
-        continue-on-error: true
         run: npm run lint
 
       - name: Verificar script de teste

@@ -35,7 +35,7 @@ import {
   useConfirm,
   useToast,
 } from '../../components/ui';
-import { useRegisterUnsaved, useUnsavedChanges } from '../../components/layout/UnsavedChanges';
+import { useRegisterUnsaved, useUnsavedChanges } from '../../components/layout/useUnsavedChanges';
 import { PERIODS, comparePeriods, gradeLevel, trimesterOf, trimesterPeriod } from '../../lib/school';
 import { listAll } from '../../lib/paging';
 import { formatGrade, matches, parseDecimal, plural, todayIso } from '../../lib/format';
@@ -120,6 +120,7 @@ export const TeacherGrades: React.FC = () => {
   }, [selectedClass]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchClassData();
   }, [fetchClassData]);
 

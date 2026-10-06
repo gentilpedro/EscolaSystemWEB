@@ -184,3 +184,245 @@ export interface ClassReport {
   disciplinaryCalls: number;
   pendingDisciplinaryCalls: number;
 }
+
+/** GET /api/admin/stats */
+export interface AdminStats {
+  totalSchools: number;
+  activeSchools: number;
+  totalUsers: number;
+  totalClasses: number;
+  totalStudents: number;
+}
+
+/* ---------- Contratos de escrita e de autenticação (OpenAPI da API: /openapi/v1.json) ---------- */
+
+/** UserDto: usuário logado, como vem de /auth/login e /auth/me (perfil com a grafia da API). */
+export interface ApiSessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  schoolId?: string | null;
+  schoolName?: string | null;
+  studentId?: string | null;
+  phone?: string | null;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  tokenType: string;
+  expiresAt: string;
+  user: ApiSessionUser;
+}
+
+export interface SchoolPayload {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  roleId: number;
+  schoolId: string | null;
+  studentId?: string | null;
+  cpf?: string | null;
+  phone?: string | null;
+}
+
+/** Cpf nulo mantém o atual; phone é sempre gravado como enviado. */
+export interface UpdateUserPayload {
+  name: string;
+  email: string;
+  roleId: number;
+  schoolId: string | null;
+  isActive: boolean;
+  cpf?: string | null;
+  phone?: string | null;
+  studentId?: string | null;
+}
+
+export interface ClassPayload {
+  name: string;
+  year: number;
+  schoolId?: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface StudentPayload {
+  name: string;
+  email: string;
+  registration: string;
+  birthDate: string;
+  classId: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface CreateGradePayload {
+  studentId: string;
+  classId: string;
+  subject: string;
+  value: number;
+  period: string;
+}
+
+export interface UpdateGradePayload {
+  subject: string;
+  value: number;
+  period: string;
+}
+
+export interface CreateAttendancePayload {
+  studentId: string;
+  classId: string;
+  date: string;
+  isPresent: boolean;
+  notes: string | null;
+}
+
+export interface UpdateAttendancePayload {
+  isPresent: boolean;
+  notes: string | null;
+}
+
+export interface CreatePendingWorkPayload {
+  studentId: string;
+  classId: string;
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
+export interface CreateDisciplinaryCallPayload {
+  studentId: string;
+  description: string;
+}
+
+/** GET /api/admin/stats */
+export interface AdminStats {
+  totalSchools: number;
+  activeSchools: number;
+  totalUsers: number;
+  totalClasses: number;
+  totalStudents: number;
+}
+
+/* ---------- Contratos de escrita e de autenticação (OpenAPI da API: /openapi/v1.json) ---------- */
+
+/** UserDto: usuário logado, como vem de /auth/login e /auth/me (perfil com a grafia da API). */
+export interface ApiSessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  schoolId?: string | null;
+  schoolName?: string | null;
+  studentId?: string | null;
+  phone?: string | null;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  tokenType: string;
+  expiresAt: string;
+  user: ApiSessionUser;
+}
+
+export interface SchoolPayload {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface CreateUserPayload {
+  name: string;
+  email: string;
+  password: string;
+  roleId: number;
+  schoolId: string | null;
+  studentId?: string | null;
+  cpf?: string | null;
+  phone?: string | null;
+}
+
+/** Cpf nulo mantém o atual; phone é sempre gravado como enviado. */
+export interface UpdateUserPayload {
+  name: string;
+  email: string;
+  roleId: number;
+  schoolId: string | null;
+  isActive: boolean;
+  cpf?: string | null;
+  phone?: string | null;
+  studentId?: string | null;
+}
+
+export interface ClassPayload {
+  name: string;
+  year: number;
+  schoolId?: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface StudentPayload {
+  name: string;
+  email: string;
+  registration: string;
+  birthDate: string;
+  classId: string;
+  /** Só na edição */
+  isActive?: boolean;
+}
+
+export interface CreateGradePayload {
+  studentId: string;
+  classId: string;
+  subject: string;
+  value: number;
+  period: string;
+}
+
+export interface UpdateGradePayload {
+  subject: string;
+  value: number;
+  period: string;
+}
+
+export interface CreateAttendancePayload {
+  studentId: string;
+  classId: string;
+  date: string;
+  isPresent: boolean;
+  notes: string | null;
+}
+
+export interface UpdateAttendancePayload {
+  isPresent: boolean;
+  notes: string | null;
+}
+
+export interface CreatePendingWorkPayload {
+  studentId: string;
+  classId: string;
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
+export interface CreateDisciplinaryCallPayload {
+  studentId: string;
+  description: string;
+}

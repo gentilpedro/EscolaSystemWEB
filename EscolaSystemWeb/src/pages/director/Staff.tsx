@@ -3,7 +3,7 @@ import { Plus, Pencil, Link2, Unlink, Briefcase, UserCheck, UserX } from 'lucide
 import type { UserListItem, ClassItem, PagedResult } from '../../types';
 import { ROLES, RoleId } from '../../types';
 import { userApi, classApi } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
 import {
@@ -67,6 +67,7 @@ export const DirectorStaff: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchStaff();
   }, [fetchStaff]);
 

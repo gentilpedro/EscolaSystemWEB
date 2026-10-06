@@ -7,7 +7,8 @@ import { EmptyState, GradeValue, LoadError, PageLoader, Panel, SummaryStrip } fr
 import { formatGrade, formatPercent } from '../../lib/format';
 import { ATTENDANCE_MIN, GRADE_LEVEL_TONE, attendanceRate, attendanceTone, average, comparePeriods, gradeLevel } from '../../lib/school';
 import { listAll } from '../../lib/paging';
-import { DashboardColumns, DashboardHeader, figure } from '../../features/dashboard/DashboardParts';
+import { DashboardColumns, DashboardHeader } from '../../features/dashboard/DashboardParts';
+import { figure } from '../../features/dashboard/figure';
 
 export const StudentDashboard: React.FC = () => {
   const [grades, setGrades] = useState<GradeItem[]>([]);
@@ -37,6 +38,7 @@ export const StudentDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchData();
   }, [fetchData]);
 

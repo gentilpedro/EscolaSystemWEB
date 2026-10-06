@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarCheck, Inbox, PenSquare } from 'lucide-react';
-import type { ClassItem, DisciplinaryCall, PagedResult } from '../../types';
+import type { ClassItem, DisciplinaryCall } from '../../types';
 import { classApi, dashboardApi, disciplinaryApi } from '../../services/api';
 import { ButtonLink, EmptyState, LoadError, PageLoader, Panel, Stamp } from '../../components/ui';
 import { formatDate, plural } from '../../lib/format';
@@ -21,9 +21,9 @@ export const OrientadorDashboard: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       const [classesData, stats, callsData] = await Promise.all([
-        classApi.list(1, 100) as Promise<PagedResult<ClassItem>>,
+        classApi.list(1, 100),
         dashboardApi.stats(),
-        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5) as Promise<PagedResult<DisciplinaryCall>>,
+        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5),
       ]);
       setClasses(classesData.items);
       setTotalStudents(stats.totalStudents);
@@ -38,6 +38,7 @@ export const OrientadorDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchData();
   }, [fetchData]);
 

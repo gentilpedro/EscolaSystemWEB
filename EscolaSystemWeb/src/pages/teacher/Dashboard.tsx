@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ClipboardCheck, PenSquare } from 'lucide-react';
-import type { ClassItem, PagedResult, AttendanceItem } from '../../types';
+import type { ClassItem } from '../../types';
 import { classApi, dashboardApi, attendanceApi } from '../../services/api';
 import { ButtonLink, LoadError, PageLoader, Panel } from '../../components/ui';
 import { plural, todayIso } from '../../lib/format';
@@ -18,12 +18,12 @@ export const TeacherDashboard: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [classesData, stats] = await Promise.all([classApi.list(1, 100) as Promise<PagedResult<ClassItem>>, dashboardApi.stats()]);
+      const [classesData, stats] = await Promise.all([classApi.list(1, 100), dashboardApi.stats()]);
       // Chamada de hoje já registrada? Uma consulta leve por turma ativa
       const active = classesData.items.filter(c => c.isActive);
       const todayResults = await Promise.all(
         active.map(c =>
-          (attendanceApi.list(1, 1, c.id, undefined, today) as Promise<PagedResult<AttendanceItem>>)
+          (attendanceApi.list(1, 1, c.id, undefined, today))
             .then(r => [c.id, r.totalCount > 0] as const)
             .catch(() => [c.id, false] as const),
         ),
@@ -41,6 +41,7 @@ export const TeacherDashboard: React.FC = () => {
   }, [today]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchData();
   }, [fetchData]);
 

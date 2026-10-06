@@ -17,7 +17,7 @@ import {
   errorMessage,
   useToast,
 } from '../../components/ui';
-import { useRegisterUnsaved, useUnsavedChanges } from '../../components/layout/UnsavedChanges';
+import { useRegisterUnsaved, useUnsavedChanges } from '../../components/layout/useUnsavedChanges';
 import { cn } from '../../lib/cn';
 import { listAll } from '../../lib/paging';
 import { formatDate, formatTime, formatWeekday, isWeekend, shiftIsoDate, todayIso } from '../../lib/format';
@@ -108,6 +108,7 @@ export const TeacherAttendance: React.FC = () => {
   }, [selectedClass, selectedDate]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     buildAttendanceEntries();
   }, [buildAttendanceEntries]);
 

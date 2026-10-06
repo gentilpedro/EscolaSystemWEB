@@ -1,24 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User, UserRole } from '../types';
-import { authApi, api, userApi } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import type { ApiSessionUser, User, UserRole } from '../types';
+import { authApi, api } from '../services/api';
+import { AuthContext } from './auth';
 
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<UserRole>;
-  logout: () => Promise<void>;
-}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const normalizeUser = (raw: any): User => ({
-    ...raw,
+  // A API manda o perfil como "Teacher"; a sessão usa os valores de UserRole ("teacher")
+  const normalizeUser = (raw: ApiSessionUser): User => ({
+    id: raw.id,
+    name: raw.name,
+    email: raw.email,
     role: raw.role.toLowerCase() as UserRole,
+    schoolId: raw.schoolId ?? undefined,
+    phone: raw.phone ?? undefined,
   });
 
   useEffect(() => {
@@ -27,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token) {
         try {
           api.setToken(token);
-          const userData = await userApi.getProfile();
+          const userData = await authApi.me();
           setUser(normalizeUser(userData));
         } catch (error) {
           console.error('Failed to fetch user profile:', error);
@@ -78,12 +76,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
 };

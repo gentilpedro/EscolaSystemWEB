@@ -108,9 +108,10 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Onde:** `pages/Login.tsx:102`
 - **Problema:** mostra `admin@escolar.com`; o usuário semeado é `admin@escolasystem.com` / `Admin@123`.
 
-### 17. Qualidade do repositório
-- Avisos de lint herdados, a maioria `any` no `api.ts`. Tipar a partir do OpenAPI da API (`/openapi/v1.json`).
-- Remover de `types/index.ts` os tipos antigos sem uso (`Class`, `Student`, `Grade`, `Attendance`, `DisciplinaryReport`), que têm campos diferentes dos da API.
-- O CI já existe (`.github/workflows/ci-cd.yml`) e o build passa. Falta tornar o lint bloqueante e o check obrigatório na proteção do `master`.
-- Avaliar trocar o token em `localStorage` por cookie httpOnly.
-- O repositório tem uma branch `main` sem histórico comum com o `master`, com commits de CI antigos. A branch padrão é o `master`; decidir se a `main` deve ser apagada.
+### 17. Qualidade do repositório (resolvido na #24, exceto as duas decisões abaixo)
+- ~~Avisos de lint herdados, a maioria `any` no `api.ts`.~~ O `api.ts` foi tipado a partir do OpenAPI da API (`/openapi/v1.json`), hooks e funções saíram dos arquivos de componente, e o lint está zerado.
+- ~~Remover de `types/index.ts` os tipos antigos sem uso.~~ Já removidos antes.
+- ~~Tornar o lint bloqueante.~~ O CI falha com erro de lint. Falta marcar o check como obrigatório na proteção do `master` (configuração do GitHub).
+- A regra `react-hooks/set-state-in-effect` acusa toda busca assíncrona ao montar, mesmo com o `setState` depois do `await`. Ela continua ativa; cada busca leva um `eslint-disable-next-line` com o motivo.
+- **Decisão pendente:** trocar o token em `localStorage` por cookie httpOnly. Exige mudança na API (emitir e ler o cookie, CSRF) e no front.
+- **Decisão pendente:** o repositório tem uma branch `main` sem histórico comum com o `master`, com commits de CI antigos. A branch padrão é o `master`; decidir se a `main` deve ser apagada.

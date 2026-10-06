@@ -25,7 +25,7 @@ import {
   Tr,
   controlClasses,
 } from '../../components/ui';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import {
   ATTENDANCE_MIN,
   GRADE_PASS,
@@ -182,6 +182,7 @@ export const TeacherReports: React.FC = () => {
   }, [selectedClass]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     loadData();
   }, [loadData]);
 

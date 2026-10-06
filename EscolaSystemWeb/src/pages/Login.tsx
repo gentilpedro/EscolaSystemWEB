@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 import { Alert, Button, TextField } from '../components/ui';
 import { Wordmark } from '../components/layout/BrandMark';
 

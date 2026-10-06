@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, BookOpen } from 'lucide-react';
 import type { ClassItem, PagedResult } from '../../types';
 import { classApi } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import {
   ActiveStamp,
   Alert,
@@ -55,6 +55,7 @@ export const DirectorClasses: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchClasses();
   }, [fetchClasses]);
 

@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 import { cn } from '../lib/cn';
 import { SESSION_ROLE_LABEL } from '../lib/school';
 import { NAV_ITEMS } from './layout/navigation';
 import { Wordmark } from './layout/BrandMark';
-import { UnsavedChangesProvider, useUnsavedChanges } from './layout/UnsavedChanges';
+import { UnsavedChangesProvider } from './layout/UnsavedChanges';
+import { useUnsavedChanges } from './layout/useUnsavedChanges';
 
 /**
  * Estrutura autenticada. A navegação é a lousa: painel verde-lousa fixo à esquerda

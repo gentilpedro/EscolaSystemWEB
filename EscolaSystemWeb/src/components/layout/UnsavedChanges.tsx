@@ -1,15 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useConfirm } from '../ui/Notifications';
-
-interface UnsavedChangesApi {
-  /** Mensagem do que seria perdido; null quando não há nada pendente. */
-  pending: string | null;
-  setPending: (message: string | null) => void;
-  /** Pergunta antes de abandonar alterações. Resolve true se pode seguir. */
-  confirmLeave: () => Promise<boolean>;
-}
-
-const UnsavedChangesContext = createContext<UnsavedChangesApi | null>(null);
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useConfirm } from '../ui/useNotifications';
+import { UnsavedChangesContext } from './useUnsavedChanges';
 
 /**
  * Guarda de alterações não salvas para a área logada. A página registra o que
@@ -48,18 +39,3 @@ export const UnsavedChangesProvider: React.FC<{ children: React.ReactNode }> = (
   const value = useMemo(() => ({ pending, setPending, confirmLeave }), [pending, confirmLeave]);
   return <UnsavedChangesContext.Provider value={value}>{children}</UnsavedChangesContext.Provider>;
 };
-
-export function useUnsavedChanges(): UnsavedChangesApi {
-  const ctx = useContext(UnsavedChangesContext);
-  if (!ctx) throw new Error('useUnsavedChanges must be used within UnsavedChangesProvider');
-  return ctx;
-}
-
-/** Registra a página como "com alterações" enquanto `dirty` for verdadeiro. */
-export function useRegisterUnsaved(dirty: boolean, message: string) {
-  const { setPending } = useUnsavedChanges();
-  useEffect(() => {
-    setPending(dirty ? message : null);
-  }, [dirty, message, setPending]);
-  useEffect(() => () => setPending(null), [setPending]);
-}
