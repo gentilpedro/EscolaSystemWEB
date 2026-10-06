@@ -141,6 +141,8 @@ export interface PendingWorkItem {
   isDelivered: boolean;
   deliveredAt?: string;
   createdAt: string;
+  /** Liga os registros (um por aluno) do mesmo trabalho lançado para a turma */
+  assignmentId: string;
 }
 
 export const ROLES: { id: number; name: string; label: string }[] = [
@@ -298,6 +300,24 @@ export interface CreatePendingWorkPayload {
   title: string;
   description: string;
   dueDate: string;
+}
+
+/** Trabalho da turma: título, descrição e prazo, iguais para todos os alunos */
+export interface AssignmentPayload {
+  title: string;
+  description: string;
+  dueDate: string;
+}
+
+export interface ClassAssignment {
+  assignmentId: string;
+  classId: string;
+  className: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  studentCount: number;
+  deliveredCount: number;
 }
 
 export interface CreateDisciplinaryCallPayload {

@@ -114,4 +114,4 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - ~~Tornar o lint bloqueante.~~ O CI falha com erro de lint. Falta marcar o check como obrigatório na proteção do `master` (configuração do GitHub).
 - A regra `react-hooks/set-state-in-effect` acusa toda busca assíncrona ao montar, mesmo com o `setState` depois do `await`. Ela continua ativa; cada busca leva um `eslint-disable-next-line` com o motivo.
 - ~~Trocar o token em `localStorage` por cookie httpOnly.~~ Resolvido na #26, junto com a API #20: cookies httpOnly, refresh token com rotação, CSRF e CSP.
-- **Decisão pendente:** o repositório tem uma branch `main` sem histórico comum com o `master`, com commits de CI antigos. A branch padrão é o `master`; decidir se a `main` deve ser apagada.
+- ~~Branch `main` sem histórico comum com o `master`.~~ Apagada em outubro de 2026: só tinha a estrutura inicial e commits de CI antigos.
