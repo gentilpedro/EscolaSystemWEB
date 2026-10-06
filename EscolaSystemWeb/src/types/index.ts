@@ -50,6 +50,8 @@ export interface UserListItem {
   classIds?: string[] | null;
   /** Alunos vinculados (responsável) */
   studentIds?: string[] | null;
+  /** Escolas com vínculo ativo (professor, orientador e responsável podem estar em várias) */
+  schools?: { id: string; name: string }[] | null;
 }
 
 /** Filtros de GET /api/users; a API aplica todos dentro do escopo do perfil. */

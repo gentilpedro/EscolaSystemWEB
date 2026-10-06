@@ -19,6 +19,7 @@ import {
   PageHeader,
   PageLoader,
   Pagination,
+  ReadOnlyField,
   RoleTag,
   RowActions,
   SearchInput,
@@ -43,6 +44,7 @@ const PAGE_SIZE = 15;
 
 /** O admin cadastra só os perfis da rede; os perfis da escola são criados pela direção. */
 const PLATFORM_ROLES = ROLES.filter(r => r.id === RoleId.ADMIN || r.id === RoleId.DIRECTOR);
+const MULTI_SCHOOL_ROLES: number[] = [RoleId.TEACHER, RoleId.ORIENTADOR, RoleId.PARENT];
 
 export const AdminUsers: React.FC = () => {
   const toast = useToast();
@@ -227,7 +229,13 @@ export const AdminUsers: React.FC = () => {
                       <Td>
                         <RoleTag role={user.role} />
                       </Td>
-                      <Td>{user.schoolName ?? <span className="text-ink-3">—</span>}</Td>
+                      <Td>
+                        {user.schools && user.schools.length > 0 ? (
+                          user.schools.map(sc => sc.name).join(', ')
+                        ) : (
+                          user.schoolName ?? <span className="text-ink-3">—</span>
+                        )}
+                      </Td>
                       <Td>
                         <ActiveStamp active={user.isActive} />
                       </Td>
@@ -291,6 +299,8 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   const currentRole = ROLES.find(r => r.name === user?.role);
   // Na edição, o perfil atual continua na lista mesmo que seja da escola (a API não troca para perfil da escola)
   const roleOptions = currentRole && !PLATFORM_ROLES.includes(currentRole) ? [...PLATFORM_ROLES, currentRole] : PLATFORM_ROLES;
+  // Professor, orientador e responsável podem estar em várias escolas: quem cuida disso é a direção de cada uma
+  const multiSchool = currentRole !== undefined && MULTI_SCHOOL_ROLES.includes(currentRole.id);
   const [formData, setFormData] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
@@ -373,7 +383,12 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         ))}
       </SelectField>
 
-      {formData.roleId !== RoleId.ADMIN && (
+      {multiSchool && formData.roleId === currentRole?.id ? (
+        <ReadOnlyField label={user?.schools && user.schools.length > 1 ? 'Escolas' : 'Escola'}>
+          {user?.schools?.map(sc => sc.name).join(', ') || user?.schoolName || '—'}
+          <span className="mt-1 block text-[0.8125rem] text-ink-3">A direção de cada escola adiciona ou remove esta pessoa.</span>
+        </ReadOnlyField>
+      ) : formData.roleId !== RoleId.ADMIN && (
         <SelectField
           label="Escola"
           value={formData.schoolId}
