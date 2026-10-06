@@ -1,0 +1,101 @@
+name: E2E
+
+# Testes de ponta a ponta (Playwright) contra o ambiente de demonstração completo:
+# banco + API (master do EscolaSystemAPI) + seed + build do front, pelo mesmo docker-compose.yml do repositório.
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      api_ref:
+        description: "Branch, tag ou commit do EscolaSystemAPI"
+        required: false
+        default: master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Os testes fazem muitos logins e requisições em sequência, todos do mesmo IP
+      AUTH_PERMIT_LIMIT: "1000"
+      GLOBAL_PERMIT_LIMIT: "5000"
+    steps:
+      # O compose espera os dois repositórios lado a lado: ./escolasystemweb e ./escolasystemapi
+      - name: Checkout do front
+        uses: actions/checkout@v4
+        with:
+          path: escolasystemweb
+
+      - name: Checkout da API
+        uses: actions/checkout@v4
+        with:
+          repository: gentilpedro/EscolaSystemAPI
+          ref: ${{ inputs.api_ref || 'master' }}
+          path: escolasystemapi
+
+      - name: Subir banco, API, seed e front
+        working-directory: escolasystemweb
+        run: docker compose up -d
+
+      - name: Esperar a seed terminar
+        working-directory: escolasystemweb
+        run: |
+          for i in $(seq 1 120); do
+            state=$(docker compose ps -a seed --format '{{.State}}')
+            if [ "$state" = "exited" ]; then break; fi
+            sleep 5
+          done
+          docker compose logs seed
+          code=$(docker inspect --format '{{.State.ExitCode}}' "$(docker compose ps -a -q seed)")
+          if [ "$code" != "0" ]; then echo "A seed falhou (código $code)"; exit 1; fi
+
+      - name: Esperar o front
+        run: |
+          for i in $(seq 1 120); do
+            if curl -sf -o /dev/null http://localhost:3000/login; then exit 0; fi
+            sleep 5
+          done
+          echo "O front não respondeu"; exit 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "npm"
+          cache-dependency-path: escolasystemweb/EscolaSystemWeb/package-lock.json
+
+      - name: Instalar dependências e o Chromium do Playwright
+        working-directory: escolasystemweb/EscolaSystemWeb
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Testes E2E
+        working-directory: escolasystemweb/EscolaSystemWeb
+        run: npm run e2e
+
+      - name: Logs do ambiente (em caso de falha)
+        if: failure()
+        working-directory: escolasystemweb
+        run: docker compose logs --tail=300 api web
+
+      - name: Relatório do Playwright (em caso de falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            escolasystemweb/EscolaSystemWeb/playwright-report/
+            escolasystemweb/EscolaSystemWeb/test-results/
+          retention-days: 14

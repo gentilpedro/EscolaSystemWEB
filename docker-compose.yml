@@ -47,6 +47,9 @@ services:
       Jwt__Key: demo-escolasystem-chave-jwt-somente-para-demonstracao-local-2026
       Cpf__EncryptionKey: demo-escolasystem-chave-cpf-somente-para-demonstracao
       Cors__AllowedOrigins__0: http://localhost:3000
+      # Limites por IP (login a cada 15 min; requisições a cada minuto). Os testes E2E sobem os dois
+      RateLimiting__AuthPermitLimit: ${AUTH_PERMIT_LIMIT:-30}
+      RateLimiting__GlobalPermitLimit: ${GLOBAL_PERMIT_LIMIT:-200}
     ports:
       - "5130:8080"
     volumes:
