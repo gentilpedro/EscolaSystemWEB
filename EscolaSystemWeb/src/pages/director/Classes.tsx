@@ -62,16 +62,16 @@ export const DirectorClasses: React.FC = () => {
     const ok = await confirm({
       title: `Excluir a turma ${cls.name}?`,
       description: `Ano letivo ${cls.year}`,
-      consequence: 'Os alunos ficam sem turma e as notas e a chamada registradas nela deixam de aparecer nos relatórios. Para encerrar o ano sem apagar, edite e desmarque "Turma ativa".',
+      consequence: 'Só é possível excluir turma sem alunos nem histórico (notas, chamadas, trabalhos). Para encerrar o ano, edite e desmarque "Turma ativa".',
       confirmLabel: 'Excluir turma',
     });
     if (!ok) return;
     try {
       await classApi.delete(cls.id);
-      toast.success('Turma excluída.');
+      toast.success(`${cls.name} foi excluída.`);
       fetchClasses();
-    } catch {
-      toast.error('Erro ao excluir turma.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao excluir turma.'));
     }
   };
 

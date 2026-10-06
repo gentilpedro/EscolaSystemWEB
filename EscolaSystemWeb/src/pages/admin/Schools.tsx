@@ -59,16 +59,16 @@ export const AdminSchools: React.FC = () => {
   const handleDelete = async (school: School) => {
     const ok = await confirm({
       title: `Excluir a escola ${school.name}?`,
-      consequence: 'Turmas, alunos e usuários vinculados a ela perdem a referência da escola. Para suspender sem apagar, edite e desmarque "Escola ativa".',
+      consequence: 'Só é possível excluir escola sem turmas nem usuários. Para suspender uma escola em uso, edite e desmarque "Escola ativa".',
       confirmLabel: 'Excluir escola',
     });
     if (!ok) return;
     try {
       await schoolApi.delete(school.id);
       setSchools(prev => prev.filter(s => s.id !== school.id));
-      toast.success('Escola excluída.');
-    } catch {
-      toast.error('Erro ao excluir escola.');
+      toast.success(`${school.name} foi excluída.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao excluir escola.'));
     }
   };
 
