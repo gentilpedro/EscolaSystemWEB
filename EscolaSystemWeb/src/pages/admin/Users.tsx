@@ -99,6 +99,7 @@ export const AdminUsers: React.FC = () => {
         ? 'O usuário deixa de conseguir entrar no sistema. Os registros dele continuam guardados e ele pode ser reativado depois.'
         : 'O usuário volta a conseguir entrar no sistema com a senha atual.',
       confirmLabel: user.isActive ? 'Desativar' : 'Ativar',
+      reversible: true,
       tone: user.isActive ? 'danger' : 'primary',
     });
     if (!ok) return;

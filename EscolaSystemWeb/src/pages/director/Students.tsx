@@ -511,6 +511,7 @@ const ParentsModal: React.FC<{
       title: `Desvincular ${parent.name} de ${student.name}?`,
       consequence: 'O responsável deixa de ver os chamados deste aluno. A conta dele continua ativa.',
       confirmLabel: 'Desvincular',
+      reversible: true,
     });
     if (!ok) return;
     await run(() => userApi.unassignStudent(parent.id, student.id), `${parent.name} foi desvinculado de ${student.name}.`, 'Erro ao desvincular.');

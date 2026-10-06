@@ -15,6 +15,8 @@ export interface ConfirmOptions {
   tone?: 'danger' | 'primary';
   /** O que acontece de fato ao confirmar (ex.: o que some junto). */
   consequence?: React.ReactNode;
+  /** A ação pode ser desfeita depois (desativar, desvincular): não avisa que é definitiva. */
+  reversible?: boolean;
 }
 
 export type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
