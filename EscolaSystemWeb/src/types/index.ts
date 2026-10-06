@@ -42,6 +42,23 @@ export interface UserListItem {
   schoolName?: string;
   isActive: boolean;
   createdAt: string;
+  cpf?: string | null;
+  phone?: string | null;
+  /** Aluno da conta (perfil Aluno) */
+  studentId?: string | null;
+  /** Turmas vinculadas (professor e orientador) */
+  classIds?: string[] | null;
+  /** Alunos vinculados (responsável) */
+  studentIds?: string[] | null;
+}
+
+/** Filtros de GET /api/users; a API aplica todos dentro do escopo do perfil. */
+export interface UserFilters {
+  schoolId?: string;
+  roleId?: number;
+  /** Trecho do nome ou do e-mail */
+  search?: string;
+  isActive?: boolean;
 }
 
 export interface ClassItem {
@@ -134,3 +151,13 @@ export const ROLES: { id: number; name: string; label: string }[] = [
   { id: 5, name: 'Parent', label: 'Responsável' },
   { id: 6, name: 'Orientador', label: 'Orientador' },
 ];
+
+/** Ids de perfil da API (Roles), para filtros e cadastro. */
+export const RoleId = {
+  ADMIN: 1,
+  DIRECTOR: 2,
+  TEACHER: 3,
+  STUDENT: 4,
+  PARENT: 5,
+  ORIENTADOR: 6,
+} as const;

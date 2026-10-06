@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authApi, API_BASE_URL } from '../../services/api';
-import { Alert, Button, PageHeader, Panel, ReadOnlyField, TextField, errorMessage } from '../../components/ui';
+import { Alert, Button, NewPasswordField, PageHeader, Panel, ReadOnlyField, TextField, errorMessage } from '../../components/ui';
+import { passwordIssues } from '../../lib/password';
 import { SESSION_ROLE_LABEL } from '../../lib/school';
 
 export const AdminSettings: React.FC = () => {
@@ -18,8 +19,8 @@ export const AdminSettings: React.FC = () => {
       setPwStatus({ type: 'error', msg: 'As senhas não coincidem.' });
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      setPwStatus({ type: 'error', msg: 'A senha deve ter no mínimo 6 caracteres.' });
+    if (passwordIssues(passwordForm.newPassword).length > 0) {
+      setPwStatus({ type: 'error', msg: 'A nova senha não atende à regra: veja o que falta abaixo do campo.' });
       return;
     }
     setSaving(true);
@@ -67,15 +68,10 @@ export const AdminSettings: React.FC = () => {
               required
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
+              <NewPasswordField
                 label="Nova senha"
-                type="password"
-                autoComplete="new-password"
                 value={passwordForm.newPassword}
-                onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                hint="Mínimo de 6 caracteres."
-                required
-                minLength={6}
+                onChange={v => setPasswordForm({ ...passwordForm, newPassword: v })}
               />
               <TextField
                 label="Confirmar nova senha"
