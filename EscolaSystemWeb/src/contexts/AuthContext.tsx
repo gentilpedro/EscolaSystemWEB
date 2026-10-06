@@ -7,7 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<UserRole>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,10 +53,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    api.clearToken();
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    // Revoga o token na API; sem rede (ou token já expirado) a saída local acontece mesmo assim
+    try {
+      if (api.getToken()) await authApi.logout();
+    } catch {
+      /* a sessão local é encerrada abaixo de qualquer forma */
+    } finally {
+      api.clearToken();
+      setUser(null);
+    }
   };
 
   return (

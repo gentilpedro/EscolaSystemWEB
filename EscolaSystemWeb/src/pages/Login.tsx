@@ -5,6 +5,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { Alert, Button, TextField } from '../components/ui';
 import { Wordmark } from '../components/layout/BrandMark';
 
+// Contas da seed de demonstração (docker/seed/demo.mjs). Fora do modo dev a lista é vazia e sai do bundle.
+const DEV_ACCOUNTS = import.meta.env.DEV
+  ? [
+      { role: 'Administração', email: 'admin@escolasystem.com', password: 'Admin@123' },
+      { role: 'Direção', email: 'diretora@escolademo.com.br', password: 'Demo@2026' },
+      { role: 'Professor', email: 'professor@escolademo.com.br', password: 'Demo@2026' },
+      { role: 'Orientação', email: 'orientacao@escolademo.com.br', password: 'Demo@2026' },
+      { role: 'Aluno', email: 'aluno@escolademo.com.br', password: 'Demo@2026' },
+      { role: 'Responsável', email: 'responsavel@escolademo.com.br', password: 'Demo@2026' },
+    ]
+  : [];
+
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -101,9 +113,25 @@ export const Login: React.FC = () => {
           {import.meta.env.DEV && (
             <div className="mt-8 rounded-md border border-dashed border-rule-strong bg-surface px-4 py-3 text-sm text-ink-3">
               <p className="font-semibold text-ink-2">Credenciais de teste (somente em desenvolvimento)</p>
-              <p className="figures mt-1 break-words text-[0.8125rem]">
-                Admin: admin@escolar.com · Diretor: diretor@escolar.com · Professor: prof@escolar.com
+              <p className="mt-1 text-[0.8125rem]">
+                Usuários da seed de demonstração (<code>docker/README.md</code>). Senha <code>Demo@2026</code>; o admin usa <code>Admin@123</code>.
               </p>
+              <ul className="mt-2 space-y-1">
+                {DEV_ACCOUNTS.map(acc => (
+                  <li key={acc.email}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(acc.email);
+                        setPassword(acc.password);
+                      }}
+                      className="break-all text-left text-[0.8125rem] underline decoration-rule-strong underline-offset-2 hover:text-ink"
+                    >
+                      <span className="font-semibold text-ink-2">{acc.role}:</span> {acc.email}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

@@ -186,8 +186,8 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(({ open, onNa
             type="button"
             onClick={async () => {
               if (!(await confirmLeave())) return;
-              logout();
               onNavigate();
+              await logout();
             }}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-lousa-line text-[0.9375rem] font-semibold text-chalk transition-colors hover:bg-white/10"
           >
