@@ -1,9 +1,11 @@
 // API Service with Fetch
 import type {
   AdminStats,
+  AssignmentPayload,
   ApiSessionUser,
   AttendanceItem,
   AuthResponse,
+  ClassAssignment,
   ClassItem,
   ClassPayload,
   ClassReport,
@@ -223,6 +225,11 @@ export const attendanceApi = {
 export const pendingWorkApi = {
   list: (page = 1, pageSize = 100, classId?: string): Paged<PendingWorkItem> => api.get('/pending-works', { params: { page, pageSize, classId } }),
   create: (data: CreatePendingWorkPayload) => api.post<PendingWorkItem>('/pending-works', data),
+  /** Lança para todos os alunos ativos da turma numa gravação só */
+  createForClass: (classId: string, data: AssignmentPayload) => api.post<ClassAssignment>('/pending-works/class', { classId, ...data }),
+  /** Corrige o trabalho em todos os alunos; as entregas registradas continuam */
+  updateAssignment: (assignmentId: string, data: AssignmentPayload) => api.put<ClassAssignment>(`/pending-works/assignments/${assignmentId}`, data),
+  deleteAssignment: (assignmentId: string) => api.delete<void>(`/pending-works/assignments/${assignmentId}`),
   markDelivered: (id: string) => api.put<PendingWorkItem>(`/pending-works/${id}/delivered`),
 };
 

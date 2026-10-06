@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BookOpen, CheckCircle2, ChevronDown, Clock, ListTodo, Plus } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronDown, Clock, ListTodo, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { ClassItem, PagedResult, PendingWorkItem, StudentItem } from '../../types';
 import { classApi, pendingWorkApi, studentApi } from '../../services/api';
 import {
@@ -9,6 +9,7 @@ import {
   Button,
   EmptyState,
   FormDialog,
+  IconButton,
   LoadError,
   PageHeader,
   PageLoader,
@@ -17,13 +18,14 @@ import {
   TextAreaField,
   TextField,
   errorMessage,
+  useConfirm,
   useToast,
 } from '../../components/ui';
 import { listAll } from '../../lib/paging';
 import { formatDate, formatDateTime, plural, shiftIsoDate, todayIso } from '../../lib/format';
 import { cn } from '../../lib/cn';
 
-/** Um trabalho da turma: a API guarda um registro por aluno, aqui eles são agrupados. */
+/** Um trabalho da turma: a API guarda um registro por aluno, ligados pelo assignmentId. */
 interface Assignment {
   key: string;
   title: string;
@@ -37,6 +39,7 @@ const isPastDue = (dueDate: string) => new Date(`${dueDate}T23:59:59`) < new Dat
 
 export const TeacherAssignments: React.FC = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
@@ -45,6 +48,7 @@ export const TeacherAssignments: React.FC = () => {
   const [loadingWorks, setLoadingWorks] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Assignment | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [delivering, setDelivering] = useState<string | null>(null);
 
@@ -93,7 +97,7 @@ export const TeacherAssignments: React.FC = () => {
   const assignments = useMemo<Assignment[]>(() => {
     const map = new Map<string, Assignment>();
     for (const w of works) {
-      const key = `${w.title}\u0000${w.description}\u0000${w.dueDate}`;
+      const key = w.assignmentId;
       const a = map.get(key) ?? { key, title: w.title, description: w.description, dueDate: w.dueDate, works: [], delivered: 0 };
       a.works.push(w);
       if (w.isDelivered) a.delivered += 1;
@@ -115,6 +119,26 @@ export const TeacherAssignments: React.FC = () => {
       toast.error(errorMessage(err, 'Erro ao registrar entrega.'));
     } finally {
       setDelivering(null);
+    }
+  };
+
+  const handleDelete = async (a: Assignment) => {
+    const ok = await confirm({
+      title: `Excluir o trabalho "${a.title}"?`,
+      description: `Prazo ${formatDate(a.dueDate)} · ${plural(a.works.length, 'aluno', 'alunos')}`,
+      consequence:
+        a.delivered > 0
+          ? `O trabalho some do portal de todos os alunos, inclusive o registro de ${plural(a.delivered, 'entrega já feita', 'entregas já feitas')}.`
+          : 'O trabalho some do portal de todos os alunos da turma.',
+      confirmLabel: 'Excluir trabalho',
+    });
+    if (!ok) return;
+    try {
+      await pendingWorkApi.deleteAssignment(a.key);
+      setWorks(prev => prev.filter(w => w.assignmentId !== a.key));
+      toast.success(`"${a.title}" foi excluído.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao excluir o trabalho.'));
     }
   };
 
@@ -251,16 +275,20 @@ export const TeacherAssignments: React.FC = () => {
                       </div>
                     </dl>
                   </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    aria-expanded={open}
-                    aria-controls={panelId}
-                    icon={<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />}
-                    onClick={() => setExpanded(open ? null : a.key)}
-                  >
-                    {open ? 'Ocultar alunos' : 'Ver alunos'}
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      aria-expanded={open}
+                      aria-controls={panelId}
+                      icon={<ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />}
+                      onClick={() => setExpanded(open ? null : a.key)}
+                    >
+                      {open ? 'Ocultar alunos' : 'Ver alunos'}
+                    </Button>
+                    <IconButton label={`Editar ${a.title}`} icon={<Pencil className="h-5 w-5" />} onClick={() => setEditing(a)} />
+                    <IconButton tone="danger" label={`Excluir ${a.title}`} icon={<Trash2 className="h-5 w-5" />} onClick={() => handleDelete(a)} />
+                  </div>
                 </div>
                 {open && (
                   <ul id={panelId} className="divide-y divide-rule border-t border-rule">
@@ -299,13 +327,18 @@ export const TeacherAssignments: React.FC = () => {
         </ul>
       )}
 
-      {showForm && cls && (
+      {(showForm || editing) && cls && (
         <AssignmentForm
           cls={cls}
-          onClose={() => setShowForm(false)}
-          onSaved={count => {
-            toast.success(`Trabalho lançado para ${plural(count, 'aluno', 'alunos')} de ${cls.name}.`);
+          assignment={editing}
+          onClose={() => {
             setShowForm(false);
+            setEditing(null);
+          }}
+          onSaved={message => {
+            toast.success(message);
+            setShowForm(false);
+            setEditing(null);
             setLoadingWorks(true);
             loadWorks();
           }}
@@ -315,56 +348,72 @@ export const TeacherAssignments: React.FC = () => {
   );
 };
 
-/** Lança o trabalho para cada aluno ativo da turma (a API guarda um registro por aluno). */
-const AssignmentForm: React.FC<{ cls: ClassItem; onClose: () => void; onSaved: (count: number) => void }> = ({ cls, onClose, onSaved }) => {
-  const [form, setForm] = useState({ title: '', description: '', dueDate: shiftIsoDate(todayIso(), 7) });
+/** Novo trabalho para a turma (uma gravação só na API) ou correção de um já lançado. */
+const AssignmentForm: React.FC<{ cls: ClassItem; assignment: Assignment | null; onClose: () => void; onSaved: (message: string) => void }> = ({
+  cls,
+  assignment,
+  onClose,
+  onSaved,
+}) => {
+  const editing = assignment !== null;
+  const [form, setForm] = useState({
+    title: assignment?.title ?? '',
+    description: assignment?.description ?? '',
+    dueDate: assignment?.dueDate ?? shiftIsoDate(todayIso(), 7),
+  });
+  // Só no lançamento: quantos alunos ativos vão receber
   const [students, setStudents] = useState<StudentItem[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (editing) return;
     listAll<StudentItem>((page, size) => studentApi.list(page, size, cls.id, undefined, true))
       .then(data => setStudents(data.items))
       .catch(() => setError('Não foi possível carregar os alunos da turma. Feche e abra o formulário de novo.'));
-  }, [cls.id]);
+  }, [cls.id, editing]);
 
-  const pastDate = form.dueDate !== '' && form.dueDate < todayIso();
+  const pastDate = form.dueDate !== '' && form.dueDate < todayIso() && form.dueDate !== assignment?.dueDate;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!students || students.length === 0) return;
     setSaving(true);
     setError(null);
-    const body = { classId: cls.id, title: form.title.trim(), description: form.description.trim(), dueDate: form.dueDate };
-    const results = await Promise.allSettled(students.map(s => pendingWorkApi.create({ ...body, studentId: s.id })));
-    const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [{ student: students[i], reason: r.reason as unknown }] : []));
-    setSaving(false);
-    if (failed.length === 0) {
-      onSaved(students.length);
-      return;
+    const body = { title: form.title.trim(), description: form.description.trim(), dueDate: form.dueDate };
+    try {
+      if (assignment) {
+        await pendingWorkApi.updateAssignment(assignment.key, body);
+        onSaved(`"${body.title}" foi atualizado para ${plural(assignment.works.length, 'aluno', 'alunos')}.`);
+      } else {
+        const created = await pendingWorkApi.createForClass(cls.id, body);
+        onSaved(`Trabalho lançado para ${plural(created.studentCount, 'aluno', 'alunos')} de ${cls.name}.`);
+      }
+    } catch (err) {
+      setError(errorMessage(err, editing ? 'Erro ao salvar o trabalho.' : 'Erro ao lançar o trabalho.'));
+    } finally {
+      setSaving(false);
     }
-    // Quem já recebeu fica com o trabalho; quem falhou é listado para lançar de novo
-    setStudents(failed.map(f => f.student));
-    setError(
-      `${plural(students.length - failed.length, 'aluno recebeu', 'alunos receberam')} o trabalho, mas ${plural(failed.length, 'falhou', 'falharam')}: ` +
-        failed.map(f => `${f.student.name} (${errorMessage(f.reason, 'erro')})`).join(', ') +
-        '. Envie de novo para lançar só para esses.',
-    );
   };
 
   return (
     <FormDialog
-      title="Novo trabalho"
+      title={editing ? 'Editar trabalho' : 'Novo trabalho'}
       description={`${cls.name} (${cls.year})`}
       onClose={onClose}
       onSubmit={handleSubmit}
       saving={saving}
-      savingLabel="Lançando…"
-      submitLabel={students ? `Lançar para ${plural(students.length, 'aluno', 'alunos')}` : 'Lançar'}
-      submitDisabled={!students || students.length === 0}
+      savingLabel={editing ? 'Salvando…' : 'Lançando…'}
+      submitLabel={editing ? 'Salvar' : students ? `Lançar para ${plural(students.length, 'aluno', 'alunos')}` : 'Lançar'}
+      submitDisabled={!editing && (!students || students.length === 0)}
     >
       {error && <Alert tone="error">{error}</Alert>}
-      {students && students.length === 0 && <Alert tone="info">A turma não tem alunos ativos.</Alert>}
+      {editing && (
+        <Alert tone="info">
+          A correção vale para {plural(assignment.works.length, 'aluno', 'alunos')}.
+          {assignment.delivered > 0 && ` ${plural(assignment.delivered, 'entrega já registrada continua', 'entregas já registradas continuam')} como está.`}
+        </Alert>
+      )}
+      {!editing && students && students.length === 0 && <Alert tone="info">A turma não tem alunos ativos.</Alert>}
       <TextField label="Título" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required maxLength={300} />
       <TextAreaField
         label="Descrição"
