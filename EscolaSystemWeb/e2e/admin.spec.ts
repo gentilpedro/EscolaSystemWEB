@@ -16,6 +16,30 @@ test.describe('Administração', () => {
     await expect(page.getByRole('cell', { name: 'orientacao@escolademo.com.br' })).toBeVisible();
   });
 
+  test('cadastro de escola valida os campos e mascara o telefone', async ({ page }) => {
+    await page.goto('/admin/schools');
+    await page.getByRole('button', { name: 'Nova escola' }).click();
+    const dialog = openDialog(page);
+
+    await dialog.getByLabel('Nome').fill('E');
+    await dialog.getByLabel('E-mail').fill('escola@x');
+    await dialog.getByLabel('Endereço').fill('R');
+    // A máscara descarta letras: "abc" deixa o campo vazio
+    await dialog.getByLabel('Telefone').fill('abc');
+    await expect(dialog.getByLabel('Telefone')).toHaveValue('');
+    await dialog.getByLabel('Telefone').fill('5133');
+    await dialog.getByRole('button', { name: 'Salvar' }).click();
+
+    await expect(dialog.getByText('Corrija os campos destacados.')).toBeVisible();
+    await expect(dialog.getByText('O nome precisa ter ao menos 3 caracteres.')).toBeVisible();
+    await expect(dialog.getByText('O endereço precisa ter ao menos 5 caracteres.')).toBeVisible();
+    await expect(dialog.getByText('Use o formato nome@dominio.com.br.')).toBeVisible();
+    await expect(dialog.getByText(/Use DDD e número/)).toBeVisible();
+
+    await dialog.getByLabel('Telefone').fill('51999991200');
+    await expect(dialog.getByLabel('Telefone')).toHaveValue('(51) 99999-1200');
+  });
+
   test('cadastro oferece só Administrador e Diretor e cobra a regra de senha', async ({ page }) => {
     await page.getByRole('button', { name: 'Novo usuário' }).click();
     const dialog = openDialog(page);
