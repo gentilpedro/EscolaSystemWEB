@@ -36,9 +36,9 @@ import {
   useToast,
 } from '../../components/ui';
 import { useRegisterUnsaved, useUnsavedChanges } from '../../components/layout/UnsavedChanges';
-import { PERIODS, comparePeriods, gradeLevel } from '../../lib/school';
+import { PERIODS, comparePeriods, gradeLevel, trimesterOf, trimesterPeriod } from '../../lib/school';
 import { listAll } from '../../lib/paging';
-import { formatGrade, matches, parseDecimal, plural } from '../../lib/format';
+import { formatGrade, matches, parseDecimal, plural, todayIso } from '../../lib/format';
 import { cn } from '../../lib/cn';
 
 /** Valida o que foi digitado numa célula do boletim. */
@@ -66,7 +66,8 @@ export const TeacherGrades: React.FC = () => {
 
   // Grade de lançamento: disciplina + período escolhidos, uma célula por aluno
   const [subject, setSubject] = useState('');
-  const [period, setPeriod] = useState(PERIODS[0]);
+  // Abre no trimestre corrente
+  const [period, setPeriod] = useState(() => trimesterPeriod(trimesterOf(todayIso())));
   const [cells, setCells] = useState<Record<string, string>>({});
   const [savingGrid, setSavingGrid] = useState(false);
   const [gridError, setGridError] = useState<string | null>(null);

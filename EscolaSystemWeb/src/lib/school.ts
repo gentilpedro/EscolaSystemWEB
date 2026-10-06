@@ -46,7 +46,47 @@ export const GRADE_LEVEL_LABEL: Record<GradeLevel, string> = {
 /** Frequência mínima de referência para aprovação. */
 export const ATTENDANCE_MIN = 75;
 
-export const PERIODS = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre', 'Recuperação', 'Final'];
+/** Períodos de nota aceitos pela API (GradePeriods): ano letivo em trimestres. */
+export const PERIODS = ['1º Trimestre', '2º Trimestre', '3º Trimestre', 'Recuperação', 'Final'];
+
+/** Períodos antigos (bimestres): notas gravadas antes da troca continuam aparecendo, depois dos atuais. */
+const LEGACY_PERIODS = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre'];
+
+export type Trimester = 1 | 2 | 3;
+
+/** Datas de cada trimestre no ano letivo (fevereiro–dezembro), no formato MM-DD. */
+export const TRIMESTER_DATES: Record<Trimester, { from: string; to: string }> = {
+  1: { from: '02-01', to: '04-30' },
+  2: { from: '05-01', to: '08-31' },
+  3: { from: '09-01', to: '12-31' },
+};
+
+export const trimesterPeriod = (t: Trimester) => `${t}º Trimestre`;
+
+export function trimesterRange(t: Trimester, year: number) {
+  return { from: `${year}-${TRIMESTER_DATES[t].from}`, to: `${year}-${TRIMESTER_DATES[t].to}` };
+}
+
+/** Trimestre em que uma data (YYYY-MM-DD) cai; janeiro conta como 1º. */
+export function trimesterOf(iso: string): Trimester {
+  const month = Number(iso.slice(5, 7));
+  return month <= 4 ? 1 : month <= 8 ? 2 : 3;
+}
+
+/** Trimestres que se cruzam com o intervalo (datas YYYY-MM-DD, `from` <= `to`). */
+export function trimestersInRange(from: string, to: string): Trimester[] {
+  const out: Trimester[] = [];
+  for (const t of [1, 2, 3] as Trimester[]) {
+    for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) {
+      const r = trimesterRange(t, y);
+      if (r.from <= to && r.to >= from) {
+        out.push(t);
+        break;
+      }
+    }
+  }
+  return out;
+}
 
 /** Nomes de perfil como vêm da API (UserListItem.role). */
 export const API_ROLE_LABEL: Record<string, string> = {
@@ -98,10 +138,11 @@ export function attendanceTone(rate: number | null): 'blue' | 'red' | 'default' 
 
 /* ---------- Boletim ---------- */
 
-/** Ordena períodos na ordem do ano letivo (1º–4º Bimestre, Recuperação, Final); desconhecidos por último. */
+/** Ordena períodos na ordem do ano letivo (trimestres, Recuperação, Final, depois bimestres antigos). */
 export function comparePeriods(a: string, b: string): number {
-  const ia = PERIODS.indexOf(a);
-  const ib = PERIODS.indexOf(b);
+  const order = [...PERIODS, ...LEGACY_PERIODS];
+  const ia = order.indexOf(a);
+  const ib = order.indexOf(b);
   return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
 }
 

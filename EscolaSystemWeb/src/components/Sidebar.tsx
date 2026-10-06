@@ -65,7 +65,7 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </a>
 
       {/* Barra superior (celular/tablet) */}
-      <header ref={headerRef} className="on-lousa sticky top-0 z-30 flex h-14 items-center justify-between bg-lousa-deep px-3 text-chalk lg:hidden">
+      <header ref={headerRef} className="on-lousa sticky top-0 z-30 flex h-14 items-center justify-between bg-lousa-deep px-3 text-chalk lg:hidden print:hidden">
         <Wordmark onLousa className="pl-1" />
         <button
           ref={menuButtonRef}
@@ -87,7 +87,7 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       <main ref={mainRef} id="conteudo" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
-        <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">{children}</div>
+        <div className="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10 print:max-w-none print:p-0">{children}</div>
       </main>
     </div>
   );
@@ -126,7 +126,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(({ open, onNa
       id="navegacao-principal"
       aria-label="Navegação principal"
       className={cn(
-        'on-lousa fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col bg-lousa-deep text-chalk',
+        'on-lousa fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] flex-col bg-lousa-deep text-chalk print:hidden',
         'transition-[transform,visibility] duration-200 ease-out',
         'lg:sticky lg:top-0 lg:z-auto lg:h-dvh lg:w-64 lg:max-w-none lg:translate-x-0 lg:visible lg:shrink-0',
         open ? 'translate-x-0 visible' : '-translate-x-full invisible',

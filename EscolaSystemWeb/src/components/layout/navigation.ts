@@ -45,6 +45,7 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Minhas turmas', href: '/teacher/classes', icon: BookOpen },
     { label: 'Chamada', href: '/teacher/attendance', icon: ClipboardCheck },
     { label: 'Notas', href: '/teacher/grades', icon: PenSquare },
+    { label: 'Relatórios', href: '/teacher/reports', icon: BarChart3 },
     { label: 'Chamados', href: '/teacher/disciplinary', icon: ClipboardList },
   ],
   [UserRole.ORIENTADOR]: [

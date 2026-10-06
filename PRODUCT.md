@@ -10,7 +10,7 @@ web
 
 Escolas reais (ensino fundamental/médio, Brasil) usando o sistema no dia a dia. Seis perfis, cada um com uma tarefa própria:
 
-- **Professor**: faz a chamada da turma, lança notas por bimestre, abre chamados disciplinares. Uso frequente, muitas vezes em sala, com pressa entre aulas.
+- **Professor**: faz a chamada da turma, lança notas por trimestre, acompanha a turma em relatórios por trimestre para o conselho de classe, abre chamados disciplinares. Uso frequente, muitas vezes em sala, com pressa entre aulas.
 - **Diretor**: gerencia funcionários, turmas e alunos da sua escola, acompanha relatórios por turma e aprova/rejeita chamados disciplinares.
 - **Orientador**: consulta alunos, faltas e notas das suas turmas; abre e resolve chamados disciplinares.
 - **Responsável**: acompanha os chamados disciplinares do(s) filho(s) e a resolução da diretoria.
@@ -23,11 +23,11 @@ Centralizar o registro escolar (chamada, notas, ocorrências, cadastro) que ante
 
 ## Positioning
 
-Um sistema multi-escola (SaaS) de gestão escolar com um portal por perfil, construído em torno dos registros que a escola brasileira já conhece: diário de classe (presença P/F), boletim por bimestre, livro de ocorrências com aprovação da diretoria.
+Um sistema multi-escola (SaaS) de gestão escolar com um portal por perfil, construído em torno dos registros que a escola brasileira já conhece: diário de classe (presença P/F), boletim por trimestre, livro de ocorrências com aprovação da diretoria.
 
 ## Operating Context
 
-- Ano letivo dividido em 1º–4º Bimestre, mais Recuperação e Final; notas de 0 a 10.
+- Ano letivo dividido em trimestres (1º: fev–abr, 2º: mai–ago, 3º: set–dez), mais Recuperação e Final; notas de 0 a 10. O conselho de classe acontece por trimestre.
 - Frequência mínima de 75% é referência de aprovação.
 - Chamados disciplinares: criados por professor/orientador, resolvidos (aprovado/rejeitado com justificativa) pela diretoria ou orientação, visíveis ao responsável.
 - Backend próprio (.NET) em `VITE_API_URL` (padrão `http://localhost:5130/api`), autenticação JWT.

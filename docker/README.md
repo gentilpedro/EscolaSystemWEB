@@ -57,7 +57,7 @@ A seed (`docker/seed/demo.mjs`) usa a própria API, com as mesmas regras de perf
 - Escola Estadual Jardim das Flores, com direção, dois professores e orientação vinculados às turmas
 - Três turmas (6º Ano A, 7º Ano B e 8º Ano A), com seis alunos cada
 - Conta de aluno para a Ana e conta de responsável vinculada a ela
-- Notas do 1º e do 2º bimestre nas quatro disciplinas
+- Notas do 1º e do 2º trimestre nas quatro disciplinas
 - Chamada dos últimos 10 dias úteis, incluindo um aluno com frequência baixa
 - Dois trabalhos por aluno: um vencido e um com prazo à frente
 - Quatro chamados disciplinares: dois pendentes, um aprovado pela direção e um rejeitado pela orientação

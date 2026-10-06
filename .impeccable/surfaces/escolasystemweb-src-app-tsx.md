@@ -13,7 +13,7 @@ Direção pinada pelo usuário ("implemente a nova direção visual proposta"): 
 
 ## Direction contract
 
-THESIS: O sistema fala a língua do registro escolar brasileiro (diário de classe, boletim por bimestre, livro de ocorrências) e recusa o painel SaaS genérico de cards coloridos com ícone e número grande.
+THESIS: O sistema fala a língua do registro escolar brasileiro (diário de classe, boletim por trimestre, livro de ocorrências) e recusa o painel SaaS genérico de cards coloridos com ícone e número grande.
 
 OWN-WORLD: Fundo papel frio neutro, tabelas pautadas por réguas finas, cabeçalho de página com régua dupla de livro-registro. A navegação é a lousa: um painel verde-lousa profundo com texto giz. Tinta azul = presente/aprovado/acima da média, tinta vermelha = falta/rejeitado/nota vermelha, âmbar = pendente/atenção. Situações são carimbos retangulares em caixa alta. Atkinson Hyperlegible Next na interface e nos algarismos: tabular-nums em tabelas e datas, proporcionais nos números em destaque.
 Emenda (2026-10-03, no build): a Mono foi testada e descartada — a vírgula decimal monoespaçada abria vão nas notas; a Next tem tnum real (verificado).

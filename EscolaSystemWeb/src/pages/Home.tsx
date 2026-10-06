@@ -17,7 +17,7 @@ const DEMO_STUDENTS = [
 
 const ROLES = [
   { name: 'Direção', does: 'Cadastra funcionários, turmas e alunos, acompanha os relatórios por turma e decide os chamados disciplinares.' },
-  { name: 'Professores', does: 'Fazem a chamada, lançam as notas por bimestre e abrem chamados disciplinares das suas turmas.' },
+  { name: 'Professores', does: 'Fazem a chamada, lançam as notas por trimestre, acompanham os relatórios da turma e abrem chamados disciplinares das suas turmas.' },
   { name: 'Orientação', does: 'Consulta alunos, faltas e notas das turmas que acompanha e abre e resolve chamados.' },
   { name: 'Responsáveis', does: 'Acompanham os chamados dos filhos e a resolução registrada pela escola.' },
   { name: 'Alunos', does: 'Consultam notas, frequência e trabalhos pendentes e registram as entregas.' },
@@ -158,14 +158,14 @@ export const Home: React.FC = () => {
 
             <Register
               title="Boletim"
-              text="Notas de 0 a 10 por disciplina e bimestre, com recuperação e final. A média aparece por disciplina e a nota vermelha não passa despercebida."
+              text="Notas de 0 a 10 por disciplina e trimestre, com recuperação e final. A média aparece por disciplina e a nota vermelha não passa despercebida."
             >
               <dl className="grid grid-cols-4 overflow-hidden rounded-md border border-rule text-center">
                 {[
-                  ['1º Bim', 8.5],
-                  ['2º Bim', 6.0],
-                  ['3º Bim', 4.5],
-                  ['4º Bim', 7.5],
+                  ['1º Tri', 8.5],
+                  ['2º Tri', 6.0],
+                  ['3º Tri', 4.5],
+                  ['Média', 6.3],
                 ].map(([label, value], i) => (
                   <div key={label} className={cn('px-2 py-3', i > 0 && 'border-l border-rule')}>
                     <dt className="text-[0.8125rem] font-semibold text-ink-3">{label}</dt>
