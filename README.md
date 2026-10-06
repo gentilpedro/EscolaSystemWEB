@@ -41,6 +41,23 @@ Em modo de desenvolvimento, a tela de login mostra os e-mails de teste. Em produ
 | `npm run build` | Checagem de tipos (`tsc -b`) e build de produção em `dist/` |
 | `npm run preview` | Serve o build de produção localmente |
 | `npm run lint` | ESLint |
+| `npm run e2e` | Testes de ponta a ponta (Playwright) contra o ambiente Docker |
+| `npm run e2e:ui` | Os mesmos testes no modo interativo do Playwright |
+
+### Testes de ponta a ponta
+
+Os testes em `EscolaSystemWeb/e2e/` usam o navegador de verdade contra o ambiente de demonstração (banco, API, seed e build do front). Cobrem a sessão por cookie, a administração de usuários, os relatórios e cadastros da direção e os relatórios e trabalhos do professor.
+
+```bash
+# na raiz do repositório: sobe o ambiente com limites de requisição altos (os testes fazem muitos logins)
+AUTH_PERMIT_LIMIT=1000 GLOBAL_PERMIT_LIMIT=5000 docker compose up -d
+
+cd EscolaSystemWeb
+npx playwright install chromium   # só na primeira vez
+npm run e2e                       # ou E2E_CHANNEL=chrome npm run e2e para usar o Chrome instalado
+```
+
+Os testes alteram dados da escola de demonstração com nomes únicos, então podem rodar várias vezes no mesmo banco. No GitHub Actions, o workflow **E2E** sobe esse mesmo ambiente com a API do `master` do EscolaSystemAPI e roda a suíte a cada PR. Em caso de falha, o relatório e os traces ficam como artefato.
 
 ## Estrutura
 
