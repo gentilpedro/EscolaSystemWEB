@@ -94,7 +94,8 @@ function situationOf(rate: number | null, bySubject: Map<string, number>, gradeA
   if (rate === null && bySubject.size === 0) return 'sem-dados';
   const levels = [...bySubject.values()].map(gradeLevel);
   if ((rate !== null && rate < ATTENDANCE_MIN) || levels.includes('low')) return 'atencao';
-  if (levels.includes('warn') || (gradeAverage !== null && gradeAverage < GRADE_PASS)) return 'acompanhar';
+  // Pela média como ela aparece (uma casa): 6,96 sai como 7,0 e não é "abaixo de 7"
+  if (levels.includes('warn') || (gradeAverage !== null && gradeLevel(gradeAverage) !== 'ok')) return 'acompanhar';
   return 'regular';
 }
 
