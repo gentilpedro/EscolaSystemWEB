@@ -20,7 +20,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Correção:** trocar o padrão para `http://localhost:5130/api`, como diz o `PRODUCT.md`, e versionar um `.env.example` com `VITE_API_URL=http://localhost:5130/api`.
 - **Aceite:** com o repositório recém-clonado e sem `.env`, o login funciona contra a API local.
 
-### 3. Cadastro de aluno e responsável pelo diretor
+### 3. ~~Cadastro de aluno e responsável pelo diretor~~ (resolvido na #16)
 - **Onde:** `src/pages/director/Students.tsx` e `src/pages/admin/Users.tsx`
 - **Problema:** nenhuma tela cria conta de aluno ou de responsável nem vincula o responsável ao aluno. `userApi.assignStudent` existe, mas não é usado. O formulário do admin oferece esses perfis e a API responde 403.
 - **Correção:**
@@ -58,7 +58,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Correção:** `toast.error(errorMessage(err, '…'))`, como os formulários já fazem. Com o PR #7, os erros 401, 403 e 400 também trazem `message`.
 - **Aceite:** excluir uma turma com alunos mostra a orientação da API.
 
-### 8. Logout encerra a sessão na API
+### 8. ~~Logout encerra a sessão na API~~ (resolvido na #14)
 - **Onde:** `src/contexts/AuthContext.tsx` (`logout`)
 - **Problema:** só apaga o token local. O token continua válido até expirar.
 - **Correção:** chamar `authApi.logout()` (`POST /api/auth/logout`) antes de limpar a sessão, ignorando falha de rede.
@@ -72,12 +72,12 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Correção:** `GET /api/students?classId=…&isActive=true` (PR #11).
 - **Aceite:** aluno desativado some da chamada; o histórico dele continua nas consultas.
 
-### 10. "Excluir usuário" diz o que acontece
+### 10. ~~"Excluir usuário" diz o que acontece~~ (resolvido na #16)
 - **Onde:** `admin/Users.tsx`, `director/Staff.tsx`
 - **Problema:** a API desativa a conta, mas o front avisa "Usuário excluído" e a pessoa reaparece como inativa.
 - **Correção:** renomear a ação para **Desativar** e a mensagem para "{nome} foi desativado".
 
-### 11. Filtros e busca no servidor
+### 11. ~~Filtros e busca no servidor~~ (resolvido na #16, com `search` e `isActive` da API #16)
 - **Onde:** `admin/Users.tsx`, `director/Staff.tsx`
 - **Problema:** com a reformulação, a busca já usa a lista inteira via `listAll`, mas baixa todos os usuários para filtrar no navegador.
 - **Correção:** enviar `roleId` e `schoolId` em `GET /api/users`. A busca por nome no servidor ainda não existe na API.
@@ -92,19 +92,19 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Contexto:** com o PR #11, a API devolve 409 para a mesma matéria e período e 400 para período fora da lista.
 - **Correção:** mostrar a mensagem da API e, ao lançar, oferecer editar a nota existente.
 
-### 14. Senha com a mesma regra da API
+### 14. ~~Senha com a mesma regra da API~~ (resolvido na #16)
 - **Onde:** `pages/admin/Settings.tsx` e formulários de usuário
 - **Problema:** o front aceita 6 caracteres; a API exige 8, com maiúscula, minúscula, número e símbolo.
 - **Correção:** validar a mesma regra antes de enviar.
 
-### 15. Vínculos visíveis no modal de turmas
+### 15. ~~Vínculos visíveis no modal de turmas~~ (resolvido na #16)
 - **Onde:** `pages/director/Staff.tsx` (`AssignClassModal`)
 - **Problema:** o modal não mostra as turmas já vinculadas.
 - **Correção:** usar `classIds` de `GET /api/users`, que a API já devolve.
 
 ## Prioridade baixa
 
-### 16. Credenciais de teste corretas no login
+### 16. ~~Credenciais de teste corretas no login~~ (resolvido na #14)
 - **Onde:** `pages/Login.tsx:102`
 - **Problema:** mostra `admin@escolar.com`; o usuário semeado é `admin@escolasystem.com` / `Admin@123`.
 

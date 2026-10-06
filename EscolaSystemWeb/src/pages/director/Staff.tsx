@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Link2, Unlink, Briefcase } from 'lucide-react';
+import { Plus, Pencil, Link2, Unlink, Briefcase, UserCheck, UserX } from 'lucide-react';
 import type { UserListItem, ClassItem, PagedResult } from '../../types';
-import { ROLES } from '../../types';
+import { ROLES, RoleId } from '../../types';
 import { userApi, classApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { listAll } from '../../lib/paging';
+import { passwordIssues } from '../../lib/password';
 import {
   ActiveStamp,
   Alert,
@@ -16,6 +17,7 @@ import {
   FormDialog,
   IconButton,
   LoadError,
+  NewPasswordField,
   PageHeader,
   PageLoader,
   RoleTag,
@@ -36,27 +38,26 @@ import {
 } from '../../components/ui';
 import { matches, plural } from '../../lib/format';
 
-const STAFF_ROLES = ROLES.filter(r => r.name === 'Teacher' || r.name === 'Director' || r.name === 'Orientador');
-
-// Campos opcionais que a API pode devolver para orientadores
-type StaffItem = UserListItem & { cpf?: string; phone?: string };
+const STAFF_ROLE_IDS: number[] = [RoleId.DIRECTOR, RoleId.TEACHER, RoleId.ORIENTADOR];
+const STAFF_ROLES = ROLES.filter(r => STAFF_ROLE_IDS.includes(r.id));
 
 export const DirectorStaff: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
-  const [staff, setStaff] = useState<StaffItem[]>([]);
+  const [staff, setStaff] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<StaffItem | null>(null);
-  const [assigningUser, setAssigningUser] = useState<StaffItem | null>(null);
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [assigningUser, setAssigningUser] = useState<UserListItem | null>(null);
 
   const fetchStaff = useCallback(async () => {
     try {
-      const data = await listAll<StaffItem>((page, size) => userApi.list(page, size));
-      setStaff(data.items.filter(u => u.role === 'Teacher' || u.role === 'Director' || u.role === 'Orientador'));
+      // Só os perfis de funcionário: alunos e responsáveis (a maioria das contas) ficam de fora
+      const lists = await Promise.all(STAFF_ROLE_IDS.map(roleId => listAll<UserListItem>((page, size) => userApi.list(page, size, { roleId }))));
+      setStaff(lists.flatMap(l => l.items).sort((a, b) => a.name.localeCompare(b.name)));
       setError(null);
     } catch {
       setError('Erro ao carregar funcionários.');
@@ -69,20 +70,35 @@ export const DirectorStaff: React.FC = () => {
     fetchStaff();
   }, [fetchStaff]);
 
-  const handleDelete = async (member: StaffItem) => {
+  const handleToggleActive = async (member: UserListItem) => {
     const ok = await confirm({
-      title: `Excluir ${member.name}?`,
+      title: member.isActive ? `Desativar ${member.name}?` : `Ativar ${member.name}?`,
       description: member.email,
-      consequence: 'A pessoa perde o acesso e sai das turmas a que estava vinculada. Para afastar sem excluir, edite e desmarque "Funcionário ativo".',
-      confirmLabel: 'Excluir funcionário',
+      consequence: member.isActive
+        ? 'A pessoa deixa de conseguir entrar no sistema. As chamadas, notas e chamados que registrou continuam guardados, e ela pode ser reativada depois.'
+        : 'A pessoa volta a conseguir entrar no sistema com a senha atual.',
+      confirmLabel: member.isActive ? 'Desativar' : 'Ativar',
+      tone: member.isActive ? 'danger' : 'primary',
     });
     if (!ok) return;
     try {
-      await userApi.delete(member.id);
-      toast.success('Funcionário excluído.');
+      if (member.isActive) {
+        // A "exclusão" da API é a desativação: preserva o histórico
+        await userApi.delete(member.id);
+      } else {
+        await userApi.update(member.id, {
+          name: member.name,
+          email: member.email,
+          roleId: ROLES.find(r => r.name === member.role)?.id ?? RoleId.TEACHER,
+          schoolId: member.schoolId ?? null,
+          isActive: true,
+          phone: member.phone ?? null,
+        });
+      }
+      toast.success(member.isActive ? `${member.name} foi desativado.` : `${member.name} foi ativado.`);
       fetchStaff();
-    } catch {
-      toast.error('Erro ao excluir funcionário.');
+    } catch (err) {
+      toast.error(errorMessage(err, member.isActive ? 'Erro ao desativar funcionário.' : 'Erro ao ativar funcionário.'));
     }
   };
 
@@ -110,7 +126,15 @@ export const DirectorStaff: React.FC = () => {
         <PageLoader label="Carregando funcionários…" />
       ) : (
         <>
-          {error && <LoadError message={error} onRetry={() => { setLoading(true); fetchStaff(); }} />}
+          {error && (
+            <LoadError
+              message={error}
+              onRetry={() => {
+                setLoading(true);
+                fetchStaff();
+              }}
+            />
+          )}
 
           <FilterBar>
             <SearchInput label="Pesquisar funcionários" value={searchTerm} onChange={setSearchTerm} placeholder="Pesquisar por nome ou e-mail…" />
@@ -134,51 +158,54 @@ export const DirectorStaff: React.FC = () => {
                   </EmptyState>
                 </TableEmptyRow>
               ) : (
-                filtered.map(member => (
-                  <Tr key={member.id}>
-                    <Td sticky strong className="whitespace-nowrap">
-                      {member.name}
-                    </Td>
-                    <Td>{member.email}</Td>
-                    <Td>
-                      <RoleTag role={member.role} />
-                    </Td>
-                    <Td>
-                      <ActiveStamp active={member.isActive} />
-                    </Td>
-                    <Td align="right">
-                      <RowActions
-                        destructive={
-                          // Ninguém exclui a própria conta por aqui
-                          member.id !== user?.id && (
-                            <IconButton
-                              tone="danger"
-                              label={`Excluir ${member.name}`}
-                              icon={<Trash2 className="h-5 w-5" />}
-                              onClick={() => handleDelete(member)}
-                            />
-                          )
-                        }
-                      >
-                        {(member.role === 'Teacher' || member.role === 'Orientador') && (
+                filtered.map(member => {
+                  // Ninguém desativa a própria conta por aqui
+                  const isSelf = member.id === user?.id;
+                  return (
+                    <Tr key={member.id}>
+                      <Td sticky strong className="whitespace-nowrap">
+                        {member.name}
+                      </Td>
+                      <Td>{member.email}</Td>
+                      <Td>
+                        <RoleTag role={member.role} />
+                      </Td>
+                      <Td>
+                        <ActiveStamp active={member.isActive} />
+                      </Td>
+                      <Td align="right">
+                        <RowActions
+                          destructive={
+                            !isSelf &&
+                            member.isActive && (
+                              <IconButton
+                                tone="danger"
+                                label={`Desativar ${member.name}`}
+                                icon={<UserX className="h-5 w-5" />}
+                                onClick={() => handleToggleActive(member)}
+                              />
+                            )
+                          }
+                        >
+                          {!isSelf && !member.isActive && (
+                            <IconButton label={`Ativar ${member.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(member)} />
+                          )}
+                          {(member.role === 'Teacher' || member.role === 'Orientador') && (
+                            <IconButton label={`Turmas de ${member.name}`} icon={<Link2 className="h-5 w-5" />} onClick={() => setAssigningUser(member)} />
+                          )}
                           <IconButton
-                            label={`Vincular ${member.name} a uma turma`}
-                            icon={<Link2 className="h-5 w-5" />}
-                            onClick={() => setAssigningUser(member)}
+                            label={`Editar ${member.name}`}
+                            icon={<Pencil className="h-5 w-5" />}
+                            onClick={() => {
+                              setEditingUser(member);
+                              setShowModal(true);
+                            }}
                           />
-                        )}
-                        <IconButton
-                          label={`Editar ${member.name}`}
-                          icon={<Pencil className="h-5 w-5" />}
-                          onClick={() => {
-                            setEditingUser(member);
-                            setShowModal(true);
-                          }}
-                        />
-                      </RowActions>
-                    </Td>
-                  </Tr>
-                ))
+                        </RowActions>
+                      </Td>
+                    </Tr>
+                  );
+                })
               )}
             </TBody>
           </TableFrame>
@@ -197,12 +224,20 @@ export const DirectorStaff: React.FC = () => {
           directorSchoolId={user?.schoolId}
         />
       )}
-      {assigningUser && <AssignClassModal user={assigningUser} onClose={() => setAssigningUser(null)} />}
+      {assigningUser && (
+        <AssignClassModal
+          user={assigningUser}
+          onClose={changed => {
+            setAssigningUser(null);
+            if (changed) fetchStaff();
+          }}
+        />
+      )}
     </>
   );
 };
 
-const StaffModal: React.FC<{ user: StaffItem | null; onClose: () => void; onSave: () => void; directorSchoolId?: string }> = ({
+const StaffModal: React.FC<{ user: UserListItem | null; onClose: () => void; onSave: () => void; directorSchoolId?: string }> = ({
   user,
   onClose,
   onSave,
@@ -212,7 +247,7 @@ const StaffModal: React.FC<{ user: StaffItem | null; onClose: () => void; onSave
     name: user?.name ?? '',
     email: user?.email ?? '',
     password: '',
-    roleId: ROLES.find(r => r.name === user?.role)?.id ?? 3,
+    roleId: ROLES.find(r => r.name === user?.role)?.id ?? RoleId.TEACHER,
     isActive: user?.isActive ?? true,
     cpf: user?.cpf ?? '',
     phone: user?.phone ?? '',
@@ -220,10 +255,14 @@ const StaffModal: React.FC<{ user: StaffItem | null; onClose: () => void; onSave
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isOrientador = ROLES.find(r => r.id === formData.roleId)?.name === 'Orientador';
+  const isOrientador = formData.roleId === RoleId.ORIENTADOR;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user && passwordIssues(formData.password).length > 0) {
+      setError('A senha não atende à regra: veja o que falta abaixo do campo.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -268,18 +307,7 @@ const StaffModal: React.FC<{ user: StaffItem | null; onClose: () => void; onSave
         onChange={e => setFormData({ ...formData, email: e.target.value })}
         required
       />
-      {!user && (
-        <TextField
-          label="Senha"
-          type="password"
-          autoComplete="new-password"
-          value={formData.password}
-          onChange={e => setFormData({ ...formData, password: e.target.value })}
-          hint="Mínimo de 6 caracteres."
-          required
-          minLength={6}
-        />
-      )}
+      {!user && <NewPasswordField value={formData.password} onChange={v => setFormData({ ...formData, password: v })} />}
       <SelectField label="Cargo" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
         {STAFF_ROLES.map(r => (
           <option key={r.id} value={r.id}>
@@ -308,15 +336,22 @@ const StaffModal: React.FC<{ user: StaffItem | null; onClose: () => void; onSave
         </div>
       )}
       {user && (
-        <CheckboxField label="Funcionário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
+        <CheckboxField
+          label="Funcionário ativo"
+          checked={formData.isActive}
+          onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+        />
       )}
     </FormDialog>
   );
 };
 
-const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ user, onClose }) => {
+/** Turmas do professor ou orientador: mostra os vínculos atuais e permite vincular e desvincular. */
+const AssignClassModal: React.FC<{ user: UserListItem; onClose: (changed: boolean) => void }> = ({ user, onClose }) => {
   const confirm = useConfirm();
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [linked, setLinked] = useState<string[]>(user.classIds ?? []);
+  const [changed, setChanged] = useState(false);
   const [selectedClass, setSelectedClass] = useState('');
   const [action, setAction] = useState<'assign' | 'unassign' | null>(null);
   const saving = action !== null;
@@ -332,8 +367,9 @@ const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ 
 
   const isOrientador = user.role === 'Orientador';
   const roleLabel = isOrientador ? 'Orientador' : 'Professor';
-
-  const className = classes.find(c => c.id === selectedClass)?.name ?? 'a turma';
+  const nameOf = (id: string) => classes.find(c => c.id === id)?.name ?? 'a turma';
+  const linkedClasses = classes.filter(c => linked.includes(c.id));
+  const isLinked = linked.includes(selectedClass);
 
   const handleAssign = async () => {
     if (!selectedClass) return;
@@ -341,12 +377,12 @@ const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ 
     setError(null);
     setSuccess(null);
     try {
-      if (isOrientador) {
-        await userApi.assignOrientadorClass(user.id, selectedClass);
-      } else {
-        await userApi.assignClass(user.id, selectedClass);
-      }
-      setSuccess(`${user.name} agora está vinculado(a) a ${className}.`);
+      if (isOrientador) await userApi.assignOrientadorClass(user.id, selectedClass);
+      else await userApi.assignClass(user.id, selectedClass);
+      setLinked(prev => [...new Set([...prev, selectedClass])]);
+      setChanged(true);
+      setSuccess(`${user.name} agora está vinculado(a) a ${nameOf(selectedClass)}.`);
+      setSelectedClass('');
     } catch (err) {
       setError(errorMessage(err, 'Erro ao vincular.'));
     } finally {
@@ -354,10 +390,9 @@ const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ 
     }
   };
 
-  const handleUnassign = async () => {
-    if (!selectedClass) return;
+  const handleUnassign = async (classId: string) => {
     const ok = await confirm({
-      title: `Desvincular ${user.name} de ${className}?`,
+      title: `Desvincular ${user.name} de ${nameOf(classId)}?`,
       consequence: `${isOrientador ? 'O orientador' : 'O professor'} deixa de ver os alunos, as notas e a chamada desta turma.`,
       confirmLabel: 'Desvincular',
     });
@@ -366,12 +401,11 @@ const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ 
     setError(null);
     setSuccess(null);
     try {
-      if (isOrientador) {
-        await userApi.unassignOrientadorClass(user.id, selectedClass);
-      } else {
-        await userApi.unassignClass(user.id, selectedClass);
-      }
-      setSuccess(`${user.name} foi desvinculado(a) de ${className}.`);
+      if (isOrientador) await userApi.unassignOrientadorClass(user.id, classId);
+      else await userApi.unassignClass(user.id, classId);
+      setLinked(prev => prev.filter(id => id !== classId));
+      setChanged(true);
+      setSuccess(`${user.name} foi desvinculado(a) de ${nameOf(classId)}.`);
     } catch (err) {
       setError(errorMessage(err, 'Erro ao desvincular.'));
     } finally {
@@ -381,50 +415,77 @@ const AssignClassModal: React.FC<{ user: StaffItem; onClose: () => void }> = ({ 
 
   return (
     <Dialog
-      title="Vincular turma"
+      title="Turmas"
       description={
         <>
           {roleLabel}: <strong className="text-ink">{user.name}</strong>
         </>
       }
-      onClose={onClose}
+      onClose={() => onClose(changed)}
       busy={saving}
       size="sm"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Fechar
-          </Button>
-          <Button
-            variant="danger-quiet"
-            icon={<Unlink className="h-4 w-4" aria-hidden="true" />}
-            onClick={handleUnassign}
-            disabled={!selectedClass || action === 'assign'}
-            loading={action === 'unassign'}
-            loadingLabel="Desvinculando…"
-          >
-            Desvincular
-          </Button>
-          <Button icon={<Link2 className="h-4 w-4" aria-hidden="true" />} onClick={handleAssign} disabled={!selectedClass || action === 'unassign'} loading={action === 'assign'} loadingLabel="Vinculando…">
-            Vincular
-          </Button>
-        </>
+        <Button variant="secondary" onClick={() => onClose(changed)} disabled={saving}>
+          Fechar
+        </Button>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {success && <Alert tone="success">{success}</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
-        <p className="text-[0.9375rem] text-ink-2">
-          Escolha a turma e use Vincular para dar acesso, ou Desvincular para retirar. Repetir um vínculo que já existe não muda nada.
-        </p>
-        <SelectField label="Turma" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
-          <option value="">Selecione…</option>
-          {classes.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.name} ({c.year})
-            </option>
-          ))}
-        </SelectField>
+
+        <section aria-labelledby="turmas-vinculadas">
+          <h3 id="turmas-vinculadas" className="mb-2 text-sm font-semibold text-ink">
+            Vinculado(a) a
+          </h3>
+          {linkedClasses.length === 0 ? (
+            <p className="text-[0.9375rem] text-ink-3">Nenhuma turma ainda.</p>
+          ) : (
+            <ul className="divide-y divide-rule rounded-md border border-rule">
+              {linkedClasses.map(c => (
+                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="text-[0.9375rem] text-ink">
+                    {c.name} <span className="text-ink-3">({c.year})</span>
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="danger-quiet"
+                    icon={<Unlink className="h-4 w-4" aria-hidden="true" />}
+                    onClick={() => handleUnassign(c.id)}
+                    disabled={saving}
+                  >
+                    Desvincular<span className="sr-only"> de {c.name}</span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <SelectField
+            label="Vincular a outra turma"
+            value={selectedClass}
+            onChange={e => setSelectedClass(e.target.value)}
+            containerClassName="min-w-0 grow"
+          >
+            <option value="">Selecione…</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.id} disabled={linked.includes(c.id)}>
+                {c.name} ({c.year}){linked.includes(c.id) ? ' · já vinculada' : ''}
+              </option>
+            ))}
+          </SelectField>
+          <Button
+            icon={<Link2 className="h-4 w-4" aria-hidden="true" />}
+            onClick={handleAssign}
+            disabled={!selectedClass || isLinked || action === 'unassign'}
+            loading={action === 'assign'}
+            loadingLabel="Vinculando…"
+          >
+            Vincular
+          </Button>
+        </div>
       </div>
     </Dialog>
   );

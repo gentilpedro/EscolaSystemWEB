@@ -1,4 +1,5 @@
 // API Service with Fetch
+import type { UserFilters } from '../types';
 
 // Sem VITE_API_URL, usa a porta padrão da EscolaSystem API em desenvolvimento (launchSettings: 5130)
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5130/api';
@@ -177,8 +178,8 @@ export const schoolApi = {
 
 // User endpoints
 export const userApi = {
-  list: (page = 1, pageSize = 20, schoolId?: string) =>
-    api.get('/users', { params: { page, pageSize, schoolId } }),
+  list: (page = 1, pageSize = 20, filters: UserFilters = {}) =>
+    api.get('/users', { params: { page, pageSize, ...filters } }),
   get: (id: string) => api.get(`/users/${id}`),
   create: (data: any) => api.post('/users', data),
   update: (id: string, data: any) => api.put(`/users/${id}`, data),

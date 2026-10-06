@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
-import type { UserListItem, StudentItem, PagedResult, School } from '../../types';
-import { ROLES } from '../../types';
-import { userApi, schoolApi, studentApi } from '../../services/api';
+import { Plus, Pencil, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import type { UserListItem, PagedResult, School } from '../../types';
+import { ROLES, RoleId } from '../../types';
+import { userApi, schoolApi } from '../../services/api';
 import {
   ActiveStamp,
   Alert,
@@ -15,6 +15,7 @@ import {
   FormDialog,
   IconButton,
   LoadError,
+  NewPasswordField,
   PageHeader,
   PageLoader,
   Pagination,
@@ -34,10 +35,14 @@ import {
   useConfirm,
   useToast,
 } from '../../components/ui';
-import { matches, plural } from '../../lib/format';
+import { plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
+import { passwordIssues } from '../../lib/password';
 
 const PAGE_SIZE = 15;
+
+/** O admin cadastra só os perfis da rede; os perfis da escola são criados pela direção. */
+const PLATFORM_ROLES = ROLES.filter(r => r.id === RoleId.ADMIN || r.id === RoleId.DIRECTOR);
 
 export const AdminUsers: React.FC = () => {
   const toast = useToast();
@@ -46,17 +51,28 @@ export const AdminUsers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // A busca vai para a API só depois de uma pausa na digitação
+  const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
-  // Com busca ou filtro ativos, a pesquisa cobre a rede inteira (não só a página atual)
-  const [allUsers, setAllUsers] = useState<UserListItem[] | null>(null);
-  const [loadingAll, setLoadingAll] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchTerm.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
-      const data: PagedResult<UserListItem> = await userApi.list(page, PAGE_SIZE);
+      const data: PagedResult<UserListItem> = await userApi.list(page, PAGE_SIZE, {
+        search: search || undefined,
+        roleId: roleFilter ? Number(roleFilter) : undefined,
+      });
       setPagedData(data);
       setError(null);
     } catch {
@@ -64,45 +80,11 @@ export const AdminUsers: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, search, roleFilter]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
-  const fetchAllUsers = useCallback(async () => {
-    setLoadingAll(true);
-    try {
-      const data = await listAll<UserListItem>((p, size) => userApi.list(p, size));
-      setAllUsers(data.items);
-    } catch {
-      setError('Erro ao pesquisar usuários.');
-    } finally {
-      setLoadingAll(false);
-    }
-  }, []);
-
-  const refresh = () => {
-    fetchUsers();
-    if (allUsers) fetchAllUsers();
-  };
-
-  const updateFilter = (apply: () => void) => {
-    apply();
-    if (!allUsers && !loadingAll) fetchAllUsers();
-  };
-
-  const handleDelete = async (user: UserListItem) => {
-    const ok = await confirm({ title: `Excluir o usuário ${user.name}?`, description: user.email, confirmLabel: 'Excluir usuário' });
-    if (!ok) return;
-    try {
-      await userApi.delete(user.id);
-      toast.success('Usuário excluído.');
-      refresh();
-    } catch {
-      toast.error('Erro ao excluir usuário.');
-    }
-  };
 
   const handleToggleActive = async (user: UserListItem) => {
     const ok = await confirm({
@@ -116,31 +98,35 @@ export const AdminUsers: React.FC = () => {
     });
     if (!ok) return;
     try {
-      await userApi.update(user.id, {
-        name: user.name,
-        email: user.email,
-        roleId: ROLES.find(r => r.name === user.role)?.id ?? 3,
-        schoolId: user.schoolId ?? null,
-        isActive: !user.isActive,
-      });
+      if (user.isActive) {
+        // A "exclusão" da API é a desativação: preserva o histórico
+        await userApi.delete(user.id);
+      } else {
+        await userApi.update(user.id, {
+          name: user.name,
+          email: user.email,
+          roleId: ROLES.find(r => r.name === user.role)?.id ?? RoleId.DIRECTOR,
+          schoolId: user.schoolId ?? null,
+          isActive: true,
+          phone: user.phone ?? null,
+        });
+      }
       toast.success(user.isActive ? `${user.name} foi desativado.` : `${user.name} foi ativado.`);
-      refresh();
-    } catch {
-      toast.error('Erro ao atualizar usuário.');
+      fetchUsers();
+    } catch (err) {
+      toast.error(errorMessage(err, user.isActive ? 'Erro ao desativar usuário.' : 'Erro ao ativar usuário.'));
     }
   };
 
-  const filtering = searchTerm.trim() !== '' || roleFilter !== '';
-  const source = filtering && allUsers ? allUsers : pagedData?.items ?? [];
-  const filteredUsers = source.filter(u => matches(searchTerm, u.name, u.email) && (roleFilter ? u.role === roleFilter : true));
-
+  const filtering = search !== '' || roleFilter !== '';
+  const users = pagedData?.items ?? [];
   const isFirstLoad = loading && !pagedData;
 
   return (
     <>
       <PageHeader
         title="Usuários"
-        description={pagedData ? `${pagedData.totalCount.toLocaleString('pt-BR')} usuários na rede` : undefined}
+        description={pagedData && !filtering ? `${pagedData.totalCount.toLocaleString('pt-BR')} usuários na rede` : undefined}
         actions={
           <Button
             icon={<Plus className="h-4 w-4" aria-hidden="true" />}
@@ -158,39 +144,45 @@ export const AdminUsers: React.FC = () => {
         <PageLoader label="Carregando usuários…" />
       ) : (
         <>
-          {error && <LoadError message={error} onRetry={() => { setLoading(true); fetchUsers(); }} />}
+          {error && <LoadError message={error} onRetry={fetchUsers} />}
 
           <FilterBar>
             <SearchInput
               label="Pesquisar usuários"
               value={searchTerm}
-              onChange={v => updateFilter(() => setSearchTerm(v))}
+              onChange={setSearchTerm}
               placeholder="Pesquisar por nome ou e-mail em toda a rede…"
             />
-            <FilterSelect label="Filtrar por perfil" value={roleFilter} onChange={v => updateFilter(() => setRoleFilter(v))}>
+            <FilterSelect
+              label="Filtrar por perfil"
+              value={roleFilter}
+              onChange={v => {
+                setRoleFilter(v);
+                setPage(1);
+              }}
+            >
               <option value="">Todos os perfis</option>
               {ROLES.map(r => (
-                <option key={r.id} value={r.name}>
+                <option key={r.id} value={r.id}>
                   {r.label}
                 </option>
               ))}
             </FilterSelect>
           </FilterBar>
 
-          {filtering && (
+          {filtering && pagedData && (
             <p className="-mt-3 mb-4 text-sm text-ink-3" aria-live="polite">
-              {loadingAll ? 'Pesquisando em toda a rede…' : `${plural(filteredUsers.length, 'usuário encontrado', 'usuários encontrados')} em toda a rede`}
+              {loading ? 'Pesquisando em toda a rede…' : `${plural(pagedData.totalCount, 'usuário encontrado', 'usuários encontrados')} em toda a rede`}
             </p>
           )}
 
-          {loading || (filtering && loadingAll) ? (
+          {loading ? (
             <BlockLoader label="Carregando usuários…" rows={8} />
           ) : (
             <TableFrame
               caption="Usuários"
               minWidth="56rem"
               footer={
-                !filtering &&
                 pagedData &&
                 pagedData.totalPages > 1 && (
                   <Pagination
@@ -199,10 +191,7 @@ export const AdminUsers: React.FC = () => {
                     totalCount={pagedData.totalCount}
                     pageSize={PAGE_SIZE}
                     noun="usuários"
-                    onPage={p => {
-                      setLoading(true);
-                      setPage(p);
-                    }}
+                    onPage={setPage}
                   />
                 )
               }
@@ -218,14 +207,14 @@ export const AdminUsers: React.FC = () => {
                 </Th>
               </THead>
               <TBody>
-                {filteredUsers.length === 0 ? (
+                {users.length === 0 ? (
                   <TableEmptyRow colSpan={6}>
                     <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" compact>
-                      {searchTerm || roleFilter ? 'Ajuste a busca ou o filtro de perfil nesta página.' : undefined}
+                      {filtering ? 'Ajuste a busca ou o filtro de perfil.' : undefined}
                     </EmptyState>
                   </TableEmptyRow>
                 ) : (
-                  filteredUsers.map(user => (
+                  users.map(user => (
                     <Tr key={user.id}>
                       <Td sticky strong className="whitespace-nowrap">
                         {user.name}
@@ -241,19 +230,19 @@ export const AdminUsers: React.FC = () => {
                       <Td align="right">
                         <RowActions
                           destructive={
-                            <IconButton
-                              tone="danger"
-                              label={`Excluir ${user.name}`}
-                              icon={<Trash2 className="h-5 w-5" />}
-                              onClick={() => handleDelete(user)}
-                            />
+                            user.isActive && (
+                              <IconButton
+                                tone="danger"
+                                label={`Desativar ${user.name}`}
+                                icon={<UserX className="h-5 w-5" />}
+                                onClick={() => handleToggleActive(user)}
+                              />
+                            )
                           }
                         >
-                          <IconButton
-                            label={user.isActive ? `Desativar ${user.name}` : `Ativar ${user.name}`}
-                            icon={user.isActive ? <UserX className="h-5 w-5" /> : <UserCheck className="h-5 w-5" />}
-                            onClick={() => handleToggleActive(user)}
-                          />
+                          {!user.isActive && (
+                            <IconButton label={`Ativar ${user.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />
+                          )}
                           <IconButton
                             label={`Editar ${user.name}`}
                             icon={<Pencil className="h-5 w-5" />}
@@ -280,7 +269,7 @@ export const AdminUsers: React.FC = () => {
           onSave={() => {
             toast.success(editingUser ? 'Usuário atualizado.' : 'Usuário criado.');
             setShowModal(false);
-            refresh();
+            fetchUsers();
           }}
         />
       )}
@@ -295,21 +284,21 @@ interface UserModalProps {
 }
 
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
+  const currentRole = ROLES.find(r => r.name === user?.role);
+  // Na edição, o perfil atual continua na lista mesmo que seja da escola (a API não troca para perfil da escola)
+  const roleOptions = currentRole && !PLATFORM_ROLES.includes(currentRole) ? [...PLATFORM_ROLES, currentRole] : PLATFORM_ROLES;
   const [formData, setFormData] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
     password: '',
-    roleId: ROLES.find(r => r.name === user?.role)?.id ?? 3,
+    roleId: currentRole?.id ?? RoleId.DIRECTOR,
     schoolId: user?.schoolId ?? '',
-    studentId: '',
     isActive: user?.isActive ?? true,
   });
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
-  const [students, setStudents] = useState<StudentItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [schoolsFailed, setSchoolsFailed] = useState(false);
-  const [studentsFailed, setStudentsFailed] = useState(false);
 
   useEffect(() => {
     listAll<School>((page, size) => schoolApi.list(page, size))
@@ -317,26 +306,24 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
       .catch(() => setSchoolsFailed(true));
   }, []);
 
-  useEffect(() => {
-    if (formData.roleId === 4) {
-      listAll<StudentItem>((page, size) => studentApi.list(page, size))
-        .then(data => setStudents(data.items ?? []))
-        .catch(() => setStudentsFailed(true));
-    }
-  }, [formData.roleId]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user && passwordIssues(formData.password).length > 0) {
+      setError('A senha não atende à regra: veja o que falta abaixo do campo.');
+      return;
+    }
     setSaving(true);
     setError(null);
+    const schoolId = formData.roleId === RoleId.ADMIN ? null : formData.schoolId || null;
     try {
       if (user) {
         await userApi.update(user.id, {
           name: formData.name,
           email: formData.email,
           roleId: formData.roleId,
-          schoolId: formData.schoolId || null,
+          schoolId,
           isActive: formData.isActive,
+          phone: user.phone ?? null,
         });
       } else {
         await userApi.create({
@@ -344,8 +331,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
           email: formData.email,
           password: formData.password,
           roleId: formData.roleId,
-          schoolId: formData.schoolId || null,
-          studentId: formData.roleId === 4 ? formData.studentId || null : null,
+          schoolId,
         });
       }
       onSave();
@@ -359,6 +345,12 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   return (
     <FormDialog title={user ? 'Editar usuário' : 'Novo usuário'} onClose={onClose} onSubmit={handleSubmit} saving={saving} submitLabel="Salvar">
       {error && <Alert tone="error">{error}</Alert>}
+      {!user && (
+        <p className="text-[0.9375rem] text-ink-2">
+          Aqui a administração cadastra administradores e diretores. Professores, orientadores, alunos e responsáveis são cadastrados pela direção de cada
+          escola.
+        </p>
+      )}
       <TextField label="Nome" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
       <TextField
         label="E-mail"
@@ -368,50 +360,22 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         onChange={e => setFormData({ ...formData, email: e.target.value })}
         required
       />
-      {!user && (
-        <TextField
-          label="Senha"
-          type="password"
-          autoComplete="new-password"
-          value={formData.password}
-          onChange={e => setFormData({ ...formData, password: e.target.value })}
-          hint="Mínimo de 6 caracteres."
-          required
-          minLength={6}
-        />
-      )}
+      {!user && <NewPasswordField value={formData.password} onChange={v => setFormData({ ...formData, password: v })} />}
       <SelectField label="Perfil" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
-        {ROLES.map(r => (
+        {roleOptions.map(r => (
           <option key={r.id} value={r.id}>
             {r.label}
           </option>
         ))}
       </SelectField>
 
-      {formData.roleId === 4 && !user && (
-        <SelectField
-          label="Aluno vinculado"
-          value={formData.studentId}
-          onChange={e => setFormData({ ...formData, studentId: e.target.value })}
-          error={studentsFailed ? 'Não foi possível carregar os alunos. Feche e abra o formulário de novo.' : undefined}
-          required
-        >
-          <option value="">Selecione o aluno…</option>
-          {students.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.name} — {s.className}
-            </option>
-          ))}
-        </SelectField>
-      )}
-
-      {formData.roleId !== 1 && (
+      {formData.roleId !== RoleId.ADMIN && (
         <SelectField
           label="Escola"
           value={formData.schoolId}
           onChange={e => setFormData({ ...formData, schoolId: e.target.value })}
           error={schoolsFailed ? 'Não foi possível carregar as escolas. Feche e abra o formulário de novo.' : undefined}
-          required={!user}
+          required
         >
           <option value="">Selecione a escola…</option>
           {schools.map(s => (
@@ -422,9 +386,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         </SelectField>
       )}
 
-      {user && (
-        <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
-      )}
+      {user && <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />}
     </FormDialog>
   );
 };

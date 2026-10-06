@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { PASSWORD_RULE, passwordError } from '../../lib/password';
 
 export const controlClasses =
   // 16px no celular (o iOS dá zoom em campos menores); 15px a partir do tablet
@@ -77,6 +78,27 @@ export const TextField: React.FC<BaseProps & React.InputHTMLAttributes<HTMLInput
     </FieldShell>
   );
 };
+
+/** Senha nova: mostra a regra da API e avisa o que falta enquanto a pessoa digita. */
+export const NewPasswordField: React.FC<{ label?: string; value: string; onChange: (value: string) => void; containerClassName?: string }> = ({
+  label = 'Senha',
+  value,
+  onChange,
+  containerClassName,
+}) => (
+  <TextField
+    label={label}
+    type="password"
+    autoComplete="new-password"
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    hint={PASSWORD_RULE}
+    error={passwordError(value)}
+    containerClassName={containerClassName}
+    required
+    maxLength={100}
+  />
+);
 
 export const SelectField: React.FC<BaseProps & React.SelectHTMLAttributes<HTMLSelectElement>> = ({
   label,
