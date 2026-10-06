@@ -44,7 +44,7 @@ export const TeacherClasses: React.FC = () => {
   const loadStudents = async (classId: string) => {
     setLoadingStudents(classId);
     try {
-      const data = await listAll<StudentItem>((page, size) => studentApi.list(page, size, classId));
+      const data = await listAll<StudentItem>((page, size) => studentApi.list(page, size, classId, undefined, true));
       setStudentsByClass(prev => ({ ...prev, [classId]: data.items }));
       setFailedStudents(prev => {
         const next = new Set(prev);

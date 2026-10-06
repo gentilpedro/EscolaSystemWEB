@@ -66,7 +66,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 
 ## Prioridade média
 
-### 9. Chamada e notas só com alunos ativos
+### 9. ~~Chamada e notas só com alunos ativos~~ (resolvido na #20)
 - **Onde:** `pages/teacher/Attendance.tsx`, `pages/teacher/Grades.tsx`, `pages/teacher/Classes.tsx`
 - **Problema:** aluno desativado aparece na chamada e recebe falta todo dia.
 - **Correção:** `GET /api/students?classId=…&isActive=true` (PR #11).
@@ -82,7 +82,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Problema:** com a reformulação, a busca já usa a lista inteira via `listAll`, mas baixa todos os usuários para filtrar no navegador.
 - **Correção:** enviar `roleId` e `schoolId` em `GET /api/users`. A busca por nome no servidor ainda não existe na API.
 
-### 12. Tela de trabalhos do professor
+### 12. ~~Tela de trabalhos do professor~~ (resolvido na #20)
 - **Onde:** novo, em `pages/teacher/`
 - **Problema:** nenhuma tela cria trabalhos, então o portal do aluno fica sempre vazio.
 - **Correção:** formulário que chama `POST /api/pending-works` para cada aluno ativo da turma.

@@ -78,7 +78,7 @@ export const TeacherAttendance: React.FC = () => {
     if (!selectedClass) return;
     try {
       const [studentsData, attendanceData] = await Promise.all([
-        listAll<StudentItem>((page, size) => studentApi.list(page, size, selectedClass)),
+        listAll<StudentItem>((page, size) => studentApi.list(page, size, selectedClass, undefined, true)),
         listAll<AttendanceItem>((page, size) => attendanceApi.list(page, size, selectedClass, undefined, selectedDate)),
       ]);
 

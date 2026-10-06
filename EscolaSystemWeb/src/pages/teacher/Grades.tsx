@@ -104,7 +104,7 @@ export const TeacherGrades: React.FC = () => {
     if (!selectedClass) return;
     try {
       const [studentsData, gradesData] = await Promise.all([
-        listAll<StudentItem>((page, size) => studentApi.list(page, size, selectedClass)),
+        listAll<StudentItem>((page, size) => studentApi.list(page, size, selectedClass, undefined, true)),
         listAll<GradeItem>((page, size) => gradeApi.list(page, size, selectedClass)),
       ]);
       setStudents(studentsData.items);

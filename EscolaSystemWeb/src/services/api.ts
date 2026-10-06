@@ -211,8 +211,9 @@ export const classApi = {
 
 // Student endpoints
 export const studentApi = {
-  list: (page = 1, pageSize = 50, classId?: string, schoolId?: string) =>
-    api.get('/students', { params: { page, pageSize, classId, schoolId } }),
+  // isActive: true deixa de fora alunos desativados (transferidos), que não entram em chamada nem lançamento
+  list: (page = 1, pageSize = 50, classId?: string, schoolId?: string, isActive?: boolean) =>
+    api.get('/students', { params: { page, pageSize, classId, schoolId, isActive } }),
   get: (id: string) => api.get(`/students/${id}`),
   create: (data: any) => api.post('/students', data),
   update: (id: string, data: any) => api.put(`/students/${id}`, data),
@@ -241,8 +242,8 @@ export const attendanceApi = {
 
 // Pending Works endpoints
 export const pendingWorkApi = {
-  list: (page = 1, pageSize = 100) =>
-    api.get('/pending-works', { params: { page, pageSize } }),
+  list: (page = 1, pageSize = 100, classId?: string) =>
+    api.get('/pending-works', { params: { page, pageSize, classId } }),
   get: (id: string) => api.get(`/pending-works/${id}`),
   create: (data: any) => api.post('/pending-works', data),
   markDelivered: (id: string) => api.put(`/pending-works/${id}/delivered`),
