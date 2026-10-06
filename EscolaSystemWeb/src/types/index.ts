@@ -161,3 +161,26 @@ export const RoleId = {
   PARENT: 5,
   ORIENTADOR: 6,
 } as const;
+
+/** GET /api/dashboard/stats: totais já restritos ao que o usuário logado pode ver. */
+export interface DashboardStats {
+  totalClasses: number;
+  totalStudents: number;
+  totalStaff: number;
+  pendingDisciplinaryCalls: number;
+  pendingWorks: number;
+  averageGrade: number | null;
+  attendanceRate: number | null;
+}
+
+/** GET /api/reports/classes: indicadores de uma turma. */
+export interface ClassReport {
+  classId: string;
+  className: string;
+  year: number;
+  studentCount: number;
+  averageGrade: number | null;
+  attendanceRate: number | null;
+  disciplinaryCalls: number;
+  pendingDisciplinaryCalls: number;
+}

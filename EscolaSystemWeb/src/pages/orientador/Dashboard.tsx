@@ -1,32 +1,34 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarCheck, Inbox, PenSquare } from 'lucide-react';
-import type { ClassItem, StudentItem, DisciplinaryCall, PagedResult } from '../../types';
-import { classApi, studentApi, disciplinaryApi } from '../../services/api';
+import type { ClassItem, DisciplinaryCall, PagedResult } from '../../types';
+import { classApi, dashboardApi, disciplinaryApi } from '../../services/api';
 import { ButtonLink, EmptyState, LoadError, PageLoader, Panel, Stamp } from '../../components/ui';
 import { formatDate, plural } from '../../lib/format';
 import { CallStatus } from '../../lib/school';
-import { listAll } from '../../lib/paging';
 import { ClassList, DashboardColumns, DashboardHeader } from '../../features/dashboard/DashboardParts';
 
 /** A orientação abre no que espera decisão; as turmas levam direto a faltas e notas. */
 export const OrientadorDashboard: React.FC = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [totalStudents, setTotalStudents] = useState(0);
+  // Só os mais recentes para a lista; o total vem da API
   const [pendingCalls, setPendingCalls] = useState<DisciplinaryCall[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [classesData, studentsData, callsData] = await Promise.all([
+      const [classesData, stats, callsData] = await Promise.all([
         classApi.list(1, 100) as Promise<PagedResult<ClassItem>>,
-        studentApi.list(1, 1) as Promise<PagedResult<StudentItem>>,
-        listAll<DisciplinaryCall>((page, size) => disciplinaryApi.list(undefined, undefined, undefined, page, size)),
+        dashboardApi.stats(),
+        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5) as Promise<PagedResult<DisciplinaryCall>>,
       ]);
       setClasses(classesData.items);
-      setTotalStudents(studentsData.totalCount);
-      setPendingCalls(callsData.items.filter(c => c.status === CallStatus.PENDING));
+      setTotalStudents(stats.totalStudents);
+      setPendingCalls(callsData.items);
+      setPendingTotal(callsData.totalCount);
       setFailed(false);
     } catch {
       setFailed(true);
@@ -70,7 +72,7 @@ export const OrientadorDashboard: React.FC = () => {
 
       <DashboardColumns>
         <Panel
-          title={pendingCalls.length > 0 ? `Chamados aguardando decisão (${pendingCalls.length})` : 'Chamados aguardando decisão'}
+          title={pendingTotal > 0 ? `Chamados aguardando decisão (${pendingTotal})` : 'Chamados aguardando decisão'}
           titleId="pendentes"
           flush
           action={
@@ -87,7 +89,7 @@ export const OrientadorDashboard: React.FC = () => {
             </EmptyState>
           ) : (
             <ul className="divide-y divide-rule">
-              {pendingCalls.slice(0, 5).map(call => (
+              {pendingCalls.map(call => (
                 <li key={call.id} className="px-5 py-3.5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="truncate font-semibold text-ink">{call.studentName}</p>
