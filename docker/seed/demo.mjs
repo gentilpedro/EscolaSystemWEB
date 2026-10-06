@@ -211,7 +211,7 @@ async function main() {
     for (const c of classes) {
       for (const s of c.studentEntities) {
         for (const subject of t.subjects) {
-          for (const period of ['1º Bimestre', '2º Bimestre']) {
+          for (const period of ['1º Trimestre', '2º Trimestre']) {
             const value = s.id === lowGrades ? grade(2.5, 5.5) : grade(5, 10);
             await call('POST', '/grades', { token: t.token, body: { studentId: s.id, classId: c.entity.id, subject, value, period } });
           }

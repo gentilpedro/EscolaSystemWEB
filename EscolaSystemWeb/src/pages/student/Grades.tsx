@@ -23,6 +23,10 @@ import { PERIODS, average, comparePeriods } from '../../lib/school';
 import { listAll } from '../../lib/paging';
 
 const SHORT_PERIOD: Record<string, string> = {
+  '1º Trimestre': '1º Tri',
+  '2º Trimestre': '2º Tri',
+  '3º Trimestre': '3º Tri',
+  // Notas antigas, de antes da troca para trimestres
   '1º Bimestre': '1º Bim',
   '2º Bimestre': '2º Bim',
   '3º Bimestre': '3º Bim',
@@ -56,8 +60,8 @@ export const StudentGrades: React.FC = () => {
   }, [fetchGrades]);
 
   const periodsWithData = [...new Set(grades.map(g => g.period))].sort(comparePeriods);
-  // Sempre os quatro bimestres; recuperação/final só quando existirem
-  const columns = (periodFilter ? [periodFilter] : [...new Set([...PERIODS.slice(0, 4), ...periodsWithData])].sort(comparePeriods));
+  // Sempre os três trimestres; recuperação, final e períodos antigos só quando existirem
+  const columns = (periodFilter ? [periodFilter] : [...new Set([...PERIODS.slice(0, 3), ...periodsWithData])].sort(comparePeriods));
 
   const subjects = [...new Set(grades.map(g => g.subject))].sort((a, b) => a.localeCompare(b));
   const cell = (subject: string, period: string) => {
