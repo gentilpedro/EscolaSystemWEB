@@ -31,6 +31,7 @@ import { TeacherClasses } from './pages/teacher/Classes';
 import { TeacherGrades } from './pages/teacher/Grades';
 import { TeacherDisciplinary } from './pages/teacher/Disciplinary';
 import { TeacherReports } from './pages/teacher/Reports';
+import { TeacherAssignments } from './pages/teacher/Assignments';
 
 // Orientador Pages
 import { OrientadorDashboard } from './pages/orientador/Dashboard';
@@ -173,6 +174,14 @@ function PrivateLayout() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.TEACHER]}>
                 <TeacherGrades />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/assignments"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.TEACHER]}>
+                <TeacherAssignments />
               </ProtectedRoute>
             }
           />
