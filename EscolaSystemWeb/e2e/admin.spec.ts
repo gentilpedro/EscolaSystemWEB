@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { loginAs, openDialog } from './support';
+import { ACCOUNTS, API_URL, loginAs, openDialog } from './support';
+
+const apiTokenStatus = async (email: string, password: string) =>
+  (await fetch(`${API_URL}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })).status;
 
 test.describe('Administração', () => {
   test.beforeEach(async ({ page }) => {
@@ -49,5 +52,51 @@ test.describe('Administração', () => {
 
     await dialog.getByLabel('Senha').fill('abc');
     await expect(dialog.getByText(/Falta: 8 caracteres, uma letra maiúscula, um número, um símbolo/)).toBeVisible();
+  });
+});
+
+test.describe('Senhas pelo admin', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAs(page, 'admin');
+  });
+
+  test('redefine a senha de outra pessoa pela linha dela', async ({ page }) => {
+    const resetTo = async (password: string) => {
+      await page.goto('/admin/users');
+      await page.getByLabel('Pesquisar usuários').fill('diretora');
+      await page.getByRole('button', { name: 'Redefinir senha de Marta Ribeiro' }).click();
+      const dialog = openDialog(page);
+      await expect(dialog).toContainText(ACCOUNTS.director.email);
+      await dialog.getByLabel(/^Nova senha/).fill(password);
+      await dialog.getByLabel('Confirmar nova senha').fill(password);
+      await dialog.getByRole('button', { name: 'Redefinir senha' }).click();
+      await expect(page.getByText('Senha de Marta Ribeiro redefinida.')).toBeVisible();
+    };
+
+    await resetTo('Outra@2026');
+    expect((await apiTokenStatus(ACCOUNTS.director.email, 'Outra@2026'))).toBe(200);
+    // Volta a senha da demo para os outros testes
+    await resetTo(ACCOUNTS.director.password);
+    expect((await apiTokenStatus(ACCOUNTS.director.email, ACCOUNTS.director.password))).toBe(200);
+  });
+
+  test('troca a própria senha só com a senha atual', async ({ page }) => {
+    const change = async (current: string, next: string) => {
+      await page.goto('/admin/settings');
+      await page.getByLabel('Senha atual').fill(current);
+      await page.getByLabel(/^Nova senha/).fill(next);
+      await page.getByLabel('Confirmar nova senha').fill(next);
+      await page.getByRole('button', { name: 'Trocar senha' }).click();
+    };
+
+    await change('Errada@123', 'Nova@2026x');
+    await expect(page.getByText('Senha atual incorreta.')).toBeVisible();
+    // Continua logado: senha atual errada não é sessão expirada
+    await expect(page).toHaveURL(/\/admin\/settings$/);
+
+    await change(ACCOUNTS.admin.password, 'Nova@2026x');
+    await expect(page.getByText('Senha trocada.')).toBeVisible();
+    await change('Nova@2026x', ACCOUNTS.admin.password);
+    await expect(page.getByText('Senha trocada.')).toBeVisible();
   });
 });

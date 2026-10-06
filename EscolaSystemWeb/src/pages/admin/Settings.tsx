@@ -5,18 +5,20 @@ import { Alert, Button, NewPasswordField, PageHeader, Panel, ReadOnlyField, Text
 import { passwordIssues } from '../../lib/password';
 import { SESSION_ROLE_LABEL } from '../../lib/school';
 
+const EMPTY_FORM = { current: '', newPassword: '', confirm: '' };
+
 export const AdminSettings: React.FC = () => {
   const { user } = useAuth();
-  const [passwordForm, setPasswordForm] = useState({ email: user?.email ?? '', newPassword: '', confirm: '' });
+  const [passwordForm, setPasswordForm] = useState(EMPTY_FORM);
   const [pwStatus, setPwStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   const mismatch = passwordForm.confirm !== '' && passwordForm.newPassword !== passwordForm.confirm;
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirm) {
-      setPwStatus({ type: 'error', msg: 'As senhas não coincidem.' });
+      setPwStatus({ type: 'error', msg: 'As senhas novas não coincidem.' });
       return;
     }
     if (passwordIssues(passwordForm.newPassword).length > 0) {
@@ -26,11 +28,11 @@ export const AdminSettings: React.FC = () => {
     setSaving(true);
     setPwStatus(null);
     try {
-      await authApi.resetPassword(passwordForm.email, passwordForm.newPassword);
-      setPwStatus({ type: 'success', msg: 'Senha redefinida. A conta já entra com a nova senha.' });
-      setPasswordForm(prev => ({ ...prev, newPassword: '', confirm: '' }));
+      await authApi.changePassword(passwordForm.current, passwordForm.newPassword);
+      setPwStatus({ type: 'success', msg: 'Senha trocada. Nos outros navegadores e aparelhos, será preciso entrar de novo.' });
+      setPasswordForm(EMPTY_FORM);
     } catch (err) {
-      setPwStatus({ type: 'error', msg: errorMessage(err, 'Erro ao alterar senha.') });
+      setPwStatus({ type: 'error', msg: errorMessage(err, 'Erro ao trocar a senha.') });
     } finally {
       setSaving(false);
     }
@@ -49,22 +51,25 @@ export const AdminSettings: React.FC = () => {
           </div>
         </Panel>
 
-        <Panel title="Redefinir senha" titleId="senha">
+        <Panel title="Trocar minha senha" titleId="senha">
           {pwStatus && (
             <Alert tone={pwStatus.type} className="mb-4">
               {pwStatus.msg}
             </Alert>
           )}
           <p className="mb-4 text-[0.9375rem] text-ink-2">
-            Define uma nova senha para a conta do e-mail informado. O seu e-mail já vem preenchido; troque-o para redefinir a senha de outro usuário.
+            Para redefinir a senha de outra pessoa, use a ação <strong className="text-ink">Redefinir senha</strong> na linha dela, em Usuários.
           </p>
-          <form onSubmit={handlePasswordReset} className="space-y-4">
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {/* Campo oculto com o e-mail: o gerenciador de senhas do navegador sabe de qual conta é a troca */}
+            <input type="email" autoComplete="username" value={user?.email ?? ''} readOnly hidden />
             <TextField
-              label="E-mail da conta"
-              type="email"
-              autoComplete="username"
-              value={passwordForm.email}
-              onChange={e => setPasswordForm({ ...passwordForm, email: e.target.value })}
+              label="Senha atual"
+              type="password"
+              autoComplete="current-password"
+              value={passwordForm.current}
+              onChange={e => setPasswordForm({ ...passwordForm, current: e.target.value })}
+              containerClassName="sm:max-w-[calc(50%-0.5rem)]"
               required
             />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -84,7 +89,7 @@ export const AdminSettings: React.FC = () => {
               />
             </div>
             <Button type="submit" loading={saving} loadingLabel="Salvando…">
-              Redefinir senha
+              Trocar senha
             </Button>
           </form>
         </Panel>
