@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ButtonLink, buttonClasses, GradeValue, Stamp } from '../components/ui';
 import { Wordmark } from '../components/layout/BrandMark';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/auth';
 import { cn } from '../lib/cn';
 
 // Nomes e valores fictícios: só para demonstrar a interface na página pública.

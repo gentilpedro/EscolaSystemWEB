@@ -67,6 +67,7 @@ export const DisciplinaryCallsPage: React.FC<DisciplinaryCallsPageProps> = ({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchCalls();
   }, [fetchCalls]);
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
-import type { StudentItem, ClassItem, PagedResult } from '../../types';
+import type { StudentItem, ClassItem } from '../../types';
 import { studentApi, classApi } from '../../services/api';
 import { listAll } from '../../lib/paging';
 import {
@@ -34,7 +34,7 @@ export const OrientadorStudents: React.FC = () => {
     try {
       const [studentsData, classesData] = await Promise.all([
         listAll<StudentItem>((page, size) => studentApi.list(page, size)),
-        classApi.list(1, 100) as Promise<PagedResult<ClassItem>>,
+        classApi.list(1, 100),
       ]);
       setStudents(studentsData.items);
       setClasses(classesData.items);
@@ -47,6 +47,7 @@ export const OrientadorStudents: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchAll();
   }, [fetchAll]);
 

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, GraduationCap, KeyRound, Users, Link2, Unlink, UserPlus } from 'lucide-react';
-import type { StudentItem, ClassItem, PagedResult, UserListItem } from '../../types';
+import type { StudentItem, ClassItem, UserListItem } from '../../types';
 import { RoleId } from '../../types';
 import { studentApi, classApi, userApi } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
 import {
@@ -71,7 +71,7 @@ export const DirectorStudents: React.FC = () => {
     try {
       const [studentsData, classesData] = await Promise.all([
         listAll<StudentItem>((page, size) => studentApi.list(page, size)),
-        classApi.list(1, 100) as Promise<PagedResult<ClassItem>>,
+        classApi.list(1, 100),
         fetchAccounts(),
       ]);
       setStudents(studentsData.items);
@@ -85,6 +85,7 @@ export const DirectorStudents: React.FC = () => {
   }, [fetchAccounts]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchAll();
   }, [fetchAll]);
 

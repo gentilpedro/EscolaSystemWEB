@@ -59,6 +59,7 @@ export const OrientadorGrades: React.FC = () => {
   }, [selectedClass]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchGrades();
   }, [fetchGrades]);
 

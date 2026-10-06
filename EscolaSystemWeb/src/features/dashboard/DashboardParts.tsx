@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import { PageHeader } from '../../components/ui';
 import { SESSION_ROLE_LABEL } from '../../lib/school';
 import type { ClassItem } from '../../types';
@@ -17,12 +17,6 @@ export const DashboardHeader: React.FC<{ title?: string; description?: React.Rea
     />
   );
 };
-
-/** Valor do resumo: "—" quando o dado não pôde ser carregado (nunca um zero falso). */
-export function figure(value: number | null | undefined, failed: boolean): React.ReactNode {
-  if (failed || value === null || value === undefined) return '—';
-  return value.toLocaleString('pt-BR');
-}
 
 /** Duas colunas no desktop quando há dois blocos; um bloco só ocupa a largura de leitura. */
 export const DashboardColumns: React.FC<{ children: React.ReactNode }> = ({ children }) => (

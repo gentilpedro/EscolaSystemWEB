@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { Dialog } from './Dialog';
 import { Button } from './Button';
+import { ConfirmContext, ToastContext, type ConfirmFn, type ConfirmOptions, type ToastApi } from './useNotifications';
 
 /* ---------- Avisos (substituem alert()) ---------- */
 
@@ -13,26 +14,7 @@ interface Toast {
   message: string;
 }
 
-interface ToastApi {
-  success: (message: string) => void;
-  error: (message: string) => void;
-}
-
-const ToastContext = createContext<ToastApi | null>(null);
-
 /* ---------- Confirmação (substitui window.confirm) ---------- */
-
-export interface ConfirmOptions {
-  title: string;
-  description?: React.ReactNode;
-  confirmLabel?: string;
-  tone?: 'danger' | 'primary';
-  /** O que acontece de fato ao confirmar (ex.: o que some junto). */
-  consequence?: React.ReactNode;
-}
-
-type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
-const ConfirmContext = createContext<ConfirmFn | null>(null);
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -134,20 +116,3 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     </ToastContext.Provider>
   );
 };
-
-export function useToast(): ToastApi {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within NotificationsProvider');
-  return ctx;
-}
-
-export function useConfirm(): ConfirmFn {
-  const ctx = useContext(ConfirmContext);
-  if (!ctx) throw new Error('useConfirm must be used within NotificationsProvider');
-  return ctx;
-}
-
-/** Mensagem de erro vinda da API (Error.message) ou um texto padrão. */
-export function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error && err.message ? err.message : fallback;
-}

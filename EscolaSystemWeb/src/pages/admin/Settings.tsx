@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/auth';
 import { authApi, API_BASE_URL } from '../../services/api';
 import { Alert, Button, NewPasswordField, PageHeader, Panel, ReadOnlyField, TextField, errorMessage } from '../../components/ui';
 import { passwordIssues } from '../../lib/password';

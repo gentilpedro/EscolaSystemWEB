@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
-import type { DashboardStats, DisciplinaryCall, PagedResult } from '../../types';
+import type { DashboardStats, DisciplinaryCall } from '../../types';
 import { dashboardApi, disciplinaryApi } from '../../services/api';
 import { EmptyState, LoadError, PageLoader, Panel, Stamp, TaskList } from '../../components/ui';
 import { CallStatus } from '../../lib/school';
@@ -21,7 +21,7 @@ export const DirectorDashboard: React.FC = () => {
     try {
       const [statsData, callsData] = await Promise.all([
         dashboardApi.stats(),
-        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5) as Promise<PagedResult<DisciplinaryCall>>,
+        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5),
       ]);
 
       setStats(statsData);
@@ -36,6 +36,7 @@ export const DirectorDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchStats();
   }, [fetchStats]);
 

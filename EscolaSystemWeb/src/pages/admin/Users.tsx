@@ -48,7 +48,8 @@ export const AdminUsers: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const [pagedData, setPagedData] = useState<PagedResult<UserListItem> | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Consulta (página + busca + perfil) cujo resultado está na tela; enquanto difere da atual, está carregando
+  const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   // A busca vai para a API só depois de uma pausa na digitação
@@ -66,8 +67,9 @@ export const AdminUsers: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
+  const query = `${page}|${search}|${roleFilter}`;
+
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     try {
       const data: PagedResult<UserListItem> = await userApi.list(page, PAGE_SIZE, {
         search: search || undefined,
@@ -78,11 +80,12 @@ export const AdminUsers: React.FC = () => {
     } catch {
       setError('Erro ao carregar usuários.');
     } finally {
-      setLoading(false);
+      setLoadedQuery(`${page}|${search}|${roleFilter}`);
     }
   }, [page, search, roleFilter]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
     fetchUsers();
   }, [fetchUsers]);
 
@@ -120,6 +123,7 @@ export const AdminUsers: React.FC = () => {
 
   const filtering = search !== '' || roleFilter !== '';
   const users = pagedData?.items ?? [];
+  const loading = loadedQuery !== query;
   const isFirstLoad = loading && !pagedData;
 
   return (
