@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, School as SchoolIcon } from 'lucide-react';
-import type { School, PagedResult } from '../../types';
+import type { School } from '../../types';
 import { schoolApi } from '../../services/api';
 import {
   ActiveStamp,
@@ -29,6 +29,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { matches, plural } from '../../lib/format';
+import { listAll } from '../../lib/paging';
 import { emailError, maskPhone, minLengthError, phoneError } from '../../lib/contact';
 
 export const AdminSchools: React.FC = () => {
@@ -43,7 +44,8 @@ export const AdminSchools: React.FC = () => {
 
   const fetchSchools = useCallback(async () => {
     try {
-      const data: PagedResult<School> = await schoolApi.list(1, 100);
+      // Todas as páginas: pedir só a primeira cortava a lista (e a busca) a partir da 101ª escola
+      const data = await listAll<School>((page, size) => schoolApi.list(page, size));
       setSchools(data.items);
       setError(null);
     } catch {
