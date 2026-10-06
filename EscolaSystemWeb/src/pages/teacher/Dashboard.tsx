@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ClipboardCheck, PenSquare } from 'lucide-react';
-import type { ClassItem, StudentItem, DisciplinaryCall, PagedResult, AttendanceItem } from '../../types';
-import { classApi, studentApi, disciplinaryApi, attendanceApi } from '../../services/api';
+import type { ClassItem, PagedResult, AttendanceItem } from '../../types';
+import { classApi, dashboardApi, attendanceApi } from '../../services/api';
 import { ButtonLink, LoadError, PageLoader, Panel } from '../../components/ui';
 import { plural, todayIso } from '../../lib/format';
-import { CallStatus } from '../../lib/school';
-import { listAll } from '../../lib/paging';
 import { ClassList, DashboardColumns, DashboardHeader } from '../../features/dashboard/DashboardParts';
 
 /** O professor abre na tarefa do dia: a chamada de cada turma, com o atalho para fazê-la. */
@@ -20,11 +18,7 @@ export const TeacherDashboard: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const [classesData, studentsData, callsData] = await Promise.all([
-        classApi.list(1, 100) as Promise<PagedResult<ClassItem>>,
-        studentApi.list(1, 1) as Promise<PagedResult<StudentItem>>,
-        listAll<DisciplinaryCall>((page, size) => disciplinaryApi.list(undefined, undefined, undefined, page, size)),
-      ]);
+      const [classesData, stats] = await Promise.all([classApi.list(1, 100) as Promise<PagedResult<ClassItem>>, dashboardApi.stats()]);
       // Chamada de hoje já registrada? Uma consulta leve por turma ativa
       const active = classesData.items.filter(c => c.isActive);
       const todayResults = await Promise.all(
@@ -35,8 +29,8 @@ export const TeacherDashboard: React.FC = () => {
         ),
       );
       setClasses(classesData.items);
-      setTotalStudents(studentsData.totalCount);
-      setPendingCalls(callsData.items.filter(c => c.status === CallStatus.PENDING).length);
+      setTotalStudents(stats.totalStudents);
+      setPendingCalls(stats.pendingDisciplinaryCalls);
       setRecordedToday(Object.fromEntries(todayResults));
       setFailed(false);
     } catch {

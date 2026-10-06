@@ -1,45 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
-import type { DisciplinaryCall, PagedResult, UserListItem } from '../../types';
-import { userApi, classApi, studentApi, disciplinaryApi } from '../../services/api';
+import type { DashboardStats, DisciplinaryCall, PagedResult } from '../../types';
+import { dashboardApi, disciplinaryApi } from '../../services/api';
 import { EmptyState, LoadError, PageLoader, Panel, Stamp, TaskList } from '../../components/ui';
 import { CallStatus } from '../../lib/school';
 import { formatDate, plural } from '../../lib/format';
-import { listAll } from '../../lib/paging';
 import { DashboardColumns, DashboardHeader } from '../../features/dashboard/DashboardParts';
-
-interface DirectorStats {
-  totalStaff: number;
-  totalClasses: number;
-  totalStudents: number;
-}
-
-const STAFF_ROLES = ['Teacher', 'Director', 'Orientador'];
 
 /** A direção abre no que precisa de decisão; os totais ficam numa linha do cabeçalho. */
 export const DirectorDashboard: React.FC = () => {
-  const [stats, setStats] = useState<DirectorStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  // Só os mais recentes para a lista; o total vem da API
   const [pendingCalls, setPendingCalls] = useState<DisciplinaryCall[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
-      const [usersData, classesData, studentsData, callsData] = await Promise.all([
-        // mesma contagem da tela Funcionários: professores, orientadores e diretores (lista completa)
-        listAll<UserListItem>((page, size) => userApi.list(page, size)),
-        classApi.list(1, 1) as Promise<PagedResult<unknown>>,
-        studentApi.list(1, 1) as Promise<PagedResult<unknown>>,
-        listAll<DisciplinaryCall>((page, size) => disciplinaryApi.list(undefined, undefined, undefined, page, size)),
+      const [statsData, callsData] = await Promise.all([
+        dashboardApi.stats(),
+        disciplinaryApi.list(undefined, undefined, String(CallStatus.PENDING), 1, 5) as Promise<PagedResult<DisciplinaryCall>>,
       ]);
 
-      setStats({
-        totalStaff: usersData.items.filter(u => STAFF_ROLES.includes(u.role)).length,
-        totalClasses: classesData.totalCount,
-        totalStudents: studentsData.totalCount,
-      });
-      setPendingCalls(callsData.items.filter(c => c.status === CallStatus.PENDING));
+      setStats(statsData);
+      setPendingCalls(callsData.items);
+      setPendingTotal(callsData.totalCount);
       setFailed(false);
     } catch {
       setFailed(true);
@@ -75,7 +62,7 @@ export const DirectorDashboard: React.FC = () => {
 
       <DashboardColumns>
         <Panel
-          title={pendingCalls.length > 0 ? `Chamados aguardando decisão (${pendingCalls.length})` : 'Chamados aguardando decisão'}
+          title={pendingTotal > 0 ? `Chamados aguardando decisão (${pendingTotal})` : 'Chamados aguardando decisão'}
           titleId="pendentes"
           flush
           action={
@@ -92,7 +79,7 @@ export const DirectorDashboard: React.FC = () => {
             </EmptyState>
           ) : (
             <ul className="divide-y divide-rule">
-              {pendingCalls.slice(0, 5).map(call => (
+              {pendingCalls.map(call => (
                 <li key={call.id} className="px-5 py-3.5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="truncate font-semibold text-ink">{call.studentName}</p>

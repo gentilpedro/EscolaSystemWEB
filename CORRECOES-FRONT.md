@@ -37,7 +37,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 
 ## Prioridade alta
 
-### 5. Relatórios e painéis calculados pela API
+### 5. ~~Relatórios e painéis calculados pela API~~ (resolvido na #22; o painel do aluno continua somando os registros do próprio aluno)
 - **Onde:** `pages/director/Reports.tsx`, `pages/director/Dashboard.tsx`, `pages/teacher/Dashboard.tsx`, `pages/orientador/Dashboard.tsx`, `pages/student/Dashboard.tsx`
 - **Problema:** os painéis e o relatório baixam todas as notas, presenças e ocorrências da escola para somar no navegador. Funciona em escola pequena, mas fica lento à medida que o histórico cresce, e herda o corte do item 4.
 - **Correção:**

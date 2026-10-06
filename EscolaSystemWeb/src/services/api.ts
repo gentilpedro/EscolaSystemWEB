@@ -1,5 +1,5 @@
 // API Service with Fetch
-import type { UserFilters } from '../types';
+import type { ClassReport, DashboardStats, UserFilters } from '../types';
 
 // Sem VITE_API_URL, usa a porta padrão da EscolaSystem API em desenvolvimento (launchSettings: 5130)
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5130/api';
@@ -249,9 +249,14 @@ export const pendingWorkApi = {
   markDelivered: (id: string) => api.put(`/pending-works/${id}/delivered`),
 };
 
-// Dashboard endpoints (já existentes na API: GET /api/admin/stats)
+// Números calculados pela API, no escopo do usuário logado
 export const dashboardApi = {
   adminStats: () => api.get('/admin/stats'),
+  stats: () => api.get<DashboardStats>('/dashboard/stats'),
+};
+
+export const reportApi = {
+  classes: (schoolId?: string) => api.get<ClassReport[]>('/reports/classes', { params: { schoolId } }),
 };
 
 // Disciplinary Report endpoints
