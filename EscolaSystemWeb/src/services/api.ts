@@ -191,6 +191,14 @@ export const userApi = {
     api.delete<void>(`/users/${orientadorId}/assign-orientador-class/${classId}`),
 };
 
+/** Pessoas da escola: professor, orientador e responsável podem estar em várias escolas. */
+export const schoolMemberApi = {
+  /** Pessoa já cadastrada (pelo e-mail) entra na escola, sem nova conta */
+  add: (schoolId: string, email: string) => api.post<UserListItem>(`/schools/${schoolId}/members`, { email }),
+  /** Sai da escola: os vínculos com ela, as turmas e os alunos dela são encerrados; o histórico fica */
+  remove: (schoolId: string, userId: string) => api.delete<void>(`/schools/${schoolId}/members/${userId}`),
+};
+
 export const classApi = {
   list: (page = 1, pageSize = 50, schoolId?: string): Paged<ClassItem> => api.get('/classes', { params: { page, pageSize, schoolId } }),
   create: (data: ClassPayload) => api.post<ClassItem>('/classes', data),

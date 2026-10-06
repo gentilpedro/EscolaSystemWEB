@@ -48,3 +48,12 @@ export const uniqueSuffix = () => `${Date.now().toString(36)}${Math.floor(Math.r
 
 /** Diálogo aberto (o sistema usa <dialog>). */
 export const openDialog = (page: Page) => page.locator('dialog[open]');
+
+export async function apiPost<T>(token: string, path: string, body: unknown): Promise<{ status: number; body: T }> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: (res.ok ? await res.json() : await res.text()) as T };
+}

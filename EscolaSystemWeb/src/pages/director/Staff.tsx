@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Link2, Unlink, Briefcase, UserCheck, UserX } from 'lucide-react';
+import { Plus, Pencil, Link2, Unlink, Briefcase, UserCheck, UserMinus, UserPlus, UserX } from 'lucide-react';
 import type { UserListItem, ClassItem, PagedResult } from '../../types';
 import { ROLES, RoleId } from '../../types';
-import { userApi, classApi } from '../../services/api';
+import { userApi, classApi, schoolMemberApi } from '../../services/api';
 import { useAuth } from '../../contexts/auth';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
@@ -52,6 +52,7 @@ export const DirectorStaff: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [assigningUser, setAssigningUser] = useState<UserListItem | null>(null);
+  const [addingExisting, setAddingExisting] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -103,6 +104,29 @@ export const DirectorStaff: React.FC = () => {
     }
   };
 
+  const otherSchools = (member: UserListItem) => (member.schools ?? []).filter(s => s.id !== user?.schoolId);
+
+  const handleRemoveFromSchool = async (member: UserListItem) => {
+    const others = otherSchools(member);
+    const ok = await confirm({
+      title: `Remover ${member.name} da escola?`,
+      description: member.email,
+      consequence:
+        others.length > 0
+          ? `A pessoa deixa de ver as turmas desta escola e continua em ${others.map(s => s.name).join(', ')}. As chamadas, notas e chamados que registrou aqui ficam guardados.`
+          : 'A pessoa deixa de ver as turmas desta escola. Como não está em outra escola, a conta é desativada. As chamadas, notas e chamados que registrou ficam guardados.',
+      confirmLabel: 'Remover da escola',
+    });
+    if (!ok || !user?.schoolId) return;
+    try {
+      await schoolMemberApi.remove(user.schoolId, member.id);
+      toast.success(`${member.name} saiu da escola.`);
+      fetchStaff();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao remover da escola.'));
+    }
+  };
+
   const filtered = staff.filter(u => matches(searchTerm, u.name, u.email));
 
   return (
@@ -111,15 +135,20 @@ export const DirectorStaff: React.FC = () => {
         title="Funcionários"
         description={!loading ? plural(staff.length, 'funcionário', 'funcionários') : undefined}
         actions={
-          <Button
-            icon={<Plus className="h-4 w-4" aria-hidden="true" />}
-            onClick={() => {
-              setEditingUser(null);
-              setShowModal(true);
-            }}
-          >
-            Novo funcionário
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" icon={<UserPlus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAddingExisting(true)}>
+              Adicionar existente
+            </Button>
+            <Button
+              icon={<Plus className="h-4 w-4" aria-hidden="true" />}
+              onClick={() => {
+                setEditingUser(null);
+                setShowModal(true);
+              }}
+            >
+              Novo funcionário
+            </Button>
+          </div>
         }
       />
 
@@ -166,6 +195,11 @@ export const DirectorStaff: React.FC = () => {
                     <Tr key={member.id}>
                       <Td sticky strong className="whitespace-nowrap">
                         {member.name}
+                        {otherSchools(member).length > 0 && (
+                          <span className="block text-[0.8125rem] font-normal text-ink-3">
+                            Também em {otherSchools(member).map(s => s.name).join(', ')}
+                          </span>
+                        )}
                       </Td>
                       <Td>{member.email}</Td>
                       <Td>
@@ -178,14 +212,22 @@ export const DirectorStaff: React.FC = () => {
                         <RowActions
                           destructive={
                             !isSelf &&
-                            member.isActive && (
+                            member.isActive &&
+                            (canChangeSchool(member) ? (
+                              <IconButton
+                                tone="danger"
+                                label={`Remover ${member.name} da escola`}
+                                icon={<UserMinus className="h-5 w-5" />}
+                                onClick={() => handleRemoveFromSchool(member)}
+                              />
+                            ) : (
                               <IconButton
                                 tone="danger"
                                 label={`Desativar ${member.name}`}
                                 icon={<UserX className="h-5 w-5" />}
                                 onClick={() => handleToggleActive(member)}
                               />
-                            )
+                            ))
                           }
                         >
                           {!isSelf && !member.isActive && (
@@ -223,6 +265,17 @@ export const DirectorStaff: React.FC = () => {
             fetchStaff();
           }}
           directorSchoolId={user?.schoolId}
+        />
+      )}
+      {addingExisting && user?.schoolId && (
+        <AddExistingModal
+          schoolId={user.schoolId}
+          onClose={() => setAddingExisting(false)}
+          onAdded={added => {
+            toast.success(`${added.name} agora também faz parte desta escola.`);
+            setAddingExisting(false);
+            fetchStaff();
+          }}
         />
       )}
       {assigningUser && (
@@ -290,7 +343,12 @@ const StaffModal: React.FC<{ user: UserListItem | null; onClose: () => void; onS
       }
       onSave();
     } catch (err) {
-      setError(errorMessage(err, 'Erro ao salvar.'));
+      const message = errorMessage(err, 'Erro ao salvar.');
+      setError(
+        !user && /e-mail já cadastrado/i.test(message)
+          ? `${message} Se a pessoa já trabalha em outra escola, use "Adicionar existente" para trazê-la sem criar outra conta.`
+          : message,
+      );
     } finally {
       setSaving(false);
     }
@@ -489,5 +547,53 @@ const AssignClassModal: React.FC<{ user: UserListItem; onClose: (changed: boolea
         </div>
       </div>
     </Dialog>
+  );
+};
+
+/** Professor e orientador podem estar em várias escolas (vínculo por escola na API). */
+function canChangeSchool(member: UserListItem): boolean {
+  return member.role === 'Teacher' || member.role === 'Orientador';
+}
+
+/** Traz para a escola alguém que já tem conta (por exemplo, professor que dá aula em outra escola). */
+const AddExistingModal: React.FC<{ schoolId: string; onClose: () => void; onAdded: (user: UserListItem) => void }> = ({ schoolId, onClose, onAdded }) => {
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      onAdded(await schoolMemberApi.add(schoolId, email.trim()));
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao adicionar à escola.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <FormDialog
+      title="Adicionar funcionário existente"
+      description="Para professor ou orientador que já tem conta, por exemplo porque dá aula em outra escola. Ele continua nas outras escolas."
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      saving={saving}
+      submitLabel="Adicionar à escola"
+      size="sm"
+    >
+      {error && <Alert tone="error">{error}</Alert>}
+      <TextField
+        label="E-mail da conta"
+        type="email"
+        autoComplete="off"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        hint="O mesmo e-mail com que a pessoa entra no sistema."
+        required
+      />
+    </FormDialog>
   );
 };

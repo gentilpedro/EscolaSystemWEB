@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, GraduationCap, KeyRound, Users, Link2, Unlink, UserPlus } from 'lucide-react';
 import type { StudentItem, ClassItem, UserListItem } from '../../types';
 import { RoleId } from '../../types';
-import { studentApi, classApi, userApi } from '../../services/api';
+import { studentApi, classApi, userApi, schoolMemberApi } from '../../services/api';
 import { useAuth } from '../../contexts/auth';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
@@ -423,6 +423,7 @@ const ParentsModal: React.FC<{
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [existingId, setExistingId] = useState('');
+  const [otherSchoolEmail, setOtherSchoolEmail] = useState('');
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
 
   const linked = parents.filter(p => p.studentIds?.includes(student.id));
@@ -453,6 +454,26 @@ const ParentsModal: React.FC<{
         setExistingId('');
       },
       `${parent.name} agora acompanha ${student.name}.`,
+      'Erro ao vincular o responsável.',
+    );
+  };
+
+  // Responsável que já tem conta em outra escola (irmãos em escolas diferentes): entra nesta escola e é vinculado
+  const linkFromOtherSchool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schoolId) return;
+    const email = otherSchoolEmail.trim();
+    await run(
+      async () => {
+        const added = await schoolMemberApi.add(schoolId, email);
+        try {
+          await userApi.assignStudent(added.id, student.id);
+        } catch (err) {
+          throw new Error(`${added.name} entrou na escola, mas não foi vinculado: ${errorMessage(err, 'tente vincular pela lista acima')}`, { cause: err });
+        }
+        setOtherSchoolEmail('');
+      },
+      `O responsável de ${email} agora também acompanha ${student.name}.`,
       'Erro ao vincular o responsável.',
     );
   };
@@ -558,6 +579,21 @@ const ParentsModal: React.FC<{
             ))}
           </SelectField>
           <Button type="submit" variant="secondary" icon={<Link2 className="h-4 w-4" aria-hidden="true" />} disabled={!existingId || busy}>
+            Vincular
+          </Button>
+        </form>
+
+        <form onSubmit={linkFromOtherSchool} className="flex flex-wrap items-end gap-3" aria-label="Vincular responsável de outra escola">
+          <TextField
+            label="Responsável que já tem conta em outra escola"
+            type="email"
+            autoComplete="off"
+            value={otherSchoolEmail}
+            onChange={e => setOtherSchoolEmail(e.target.value)}
+            containerClassName="min-w-0 grow"
+            hint="O e-mail com que ele entra no sistema. Ele continua acompanhando os filhos da outra escola."
+          />
+          <Button type="submit" variant="secondary" icon={<Link2 className="h-4 w-4" aria-hidden="true" />} disabled={!otherSchoolEmail.trim() || busy}>
             Vincular
           </Button>
         </form>
