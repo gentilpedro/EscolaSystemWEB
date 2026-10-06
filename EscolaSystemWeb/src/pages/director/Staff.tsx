@@ -80,6 +80,7 @@ export const DirectorStaff: React.FC = () => {
         ? 'A pessoa deixa de conseguir entrar no sistema. As chamadas, notas e chamados que registrou continuam guardados, e ela pode ser reativada depois.'
         : 'A pessoa volta a conseguir entrar no sistema com a senha atual.',
       confirmLabel: member.isActive ? 'Desativar' : 'Ativar',
+      reversible: true,
       tone: member.isActive ? 'danger' : 'primary',
     });
     if (!ok) return;
@@ -116,6 +117,7 @@ export const DirectorStaff: React.FC = () => {
           ? `A pessoa deixa de ver as turmas desta escola e continua em ${others.map(s => s.name).join(', ')}. As chamadas, notas e chamados que registrou aqui ficam guardados.`
           : 'A pessoa deixa de ver as turmas desta escola. Como não está em outra escola, a conta é desativada. As chamadas, notas e chamados que registrou ficam guardados.',
       confirmLabel: 'Remover da escola',
+      reversible: true,
     });
     if (!ok || !user?.schoolId) return;
     try {
@@ -454,6 +456,7 @@ const AssignClassModal: React.FC<{ user: UserListItem; onClose: (changed: boolea
       title: `Desvincular ${user.name} de ${nameOf(classId)}?`,
       consequence: `${isOrientador ? 'O orientador' : 'O professor'} deixa de ver os alunos, as notas e a chamada desta turma.`,
       confirmLabel: 'Desvincular',
+      reversible: true,
     });
     if (!ok) return;
     setAction('unassign');

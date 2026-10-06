@@ -76,9 +76,11 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             }
           >
             {pending.consequence && <p className="mb-2 text-[0.9375rem] text-ink-2">{pending.consequence}</p>}
-            <p className="text-[0.9375rem] text-ink-2">
-              {pending.tone === 'primary' ? 'Confirme para continuar.' : 'Esta ação não pode ser desfeita.'}
-            </p>
+            {!pending.reversible && (
+              <p className="text-[0.9375rem] text-ink-2">
+                {pending.tone === 'primary' ? 'Confirme para continuar.' : 'Esta ação não pode ser desfeita.'}
+              </p>
+            )}
           </Dialog>
         )}
 
