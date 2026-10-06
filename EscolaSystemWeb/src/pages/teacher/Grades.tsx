@@ -189,7 +189,9 @@ export const TeacherGrades: React.FC = () => {
           : gradeApi.create({ studentId: c.student.id, classId: selectedClass, subject: subjectName, value: c.value, period }),
       ),
     );
-    const failed = changes.filter((_, i) => results[i].status === 'rejected');
+    const failed = changes
+      .map((c, i) => ({ ...c, result: results[i] }))
+      .filter((c): c is typeof c & { result: PromiseRejectedResult } => c.result.status === 'rejected');
     const savedCount = changes.length - failed.length;
     // Mantém na grade só o que falhou, para tentar de novo sem redigitar
     setCells(prev => {
@@ -198,7 +200,9 @@ export const TeacherGrades: React.FC = () => {
       return next;
     });
     if (failed.length > 0) {
-      setGridError(`${plural(failed.length, 'nota não foi salva', 'notas não foram salvas')}: ${failed.map(f => f.student.name).join(', ')}.`);
+      // Motivo de cada falha, como a API respondeu (ex.: nota já lançada nesta matéria e período)
+      const reasons = failed.map(f => `${f.student.name}: ${errorMessage(f.result.reason, 'erro ao salvar')}`);
+      setGridError(`${plural(failed.length, 'nota não foi salva', 'notas não foram salvas')}. ${reasons.join(' · ')}`);
     }
     if (savedCount > 0) toast.success(`${plural(savedCount, 'nota salva', 'notas salvas')} em ${subjectName} · ${period}.`);
     setSavingGrid(false);
@@ -217,8 +221,8 @@ export const TeacherGrades: React.FC = () => {
       await gradeApi.delete(grade.id);
       setGrades(prev => prev.filter(g => g.id !== grade.id));
       toast.success('Nota excluída.');
-    } catch {
-      toast.error('Erro ao excluir nota.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao excluir nota.'));
     }
   };
 
@@ -393,7 +397,8 @@ export const TeacherGrades: React.FC = () => {
                 <div className="sticky bottom-0 z-10 border-t border-rule bg-paper/95 px-5 py-3 backdrop-blur-sm">
                   {gridError && (
                     <Alert tone="error" className="mb-3" title={gridError}>
-                      As notas que falharam continuam na grade. Salve de novo para tentar outra vez.
+                      As notas que falharam continuam na grade. Se o aluno já tinha nota nesta disciplina e período, a grade foi recarregada com ela: confira e
+                      salve de novo para editar.
                     </Alert>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -543,6 +548,8 @@ const EditGradeModal: React.FC<EditGradeModalProps> = ({ grade, onClose, onSave 
       <TextField label="Disciplina" value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })} required />
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField label="Período" value={formData.period} onChange={e => setFormData({ ...formData, period: e.target.value })} required>
+          {/* Nota de período antigo (bimestre): o período atual continua na lista para não ser trocado sem querer */}
+          {!PERIODS.includes(grade.period) && <option value={grade.period}>{grade.period} (período antigo)</option>}
           {PERIODS.map(p => (
             <option key={p} value={p}>
               {p}

@@ -3,7 +3,7 @@ import { CheckCircle2, Clock, ListTodo } from 'lucide-react';
 import type { PendingWorkItem } from '../../types';
 import { pendingWorkApi } from '../../services/api';
 import { listAll } from '../../lib/paging';
-import { Alert, Button, EmptyState, LoadError, PageHeader, PageLoader, Segmented, Stamp, useConfirm, useToast } from '../../components/ui';
+import { Alert, Button, EmptyState, LoadError, PageHeader, PageLoader, Segmented, Stamp, errorMessage, useConfirm, useToast } from '../../components/ui';
 import { formatDate, plural } from '../../lib/format';
 import { cn } from '../../lib/cn';
 
@@ -50,8 +50,8 @@ export const StudentAssignments: React.FC = () => {
       await pendingWorkApi.markDelivered(work.id);
       setWorks(prev => prev.map(w => (w.id === work.id ? { ...w, isDelivered: true, deliveredAt: new Date().toISOString() } : w)));
       toast.success('Entrega registrada.');
-    } catch {
-      toast.error('Erro ao registrar entrega.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao registrar entrega.'));
     } finally {
       setDelivering(null);
     }

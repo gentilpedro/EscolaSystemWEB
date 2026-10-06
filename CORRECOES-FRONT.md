@@ -52,7 +52,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Correção:** não redirecionar quando a requisição é `/auth/login`. Nas demais, redirecionar só se havia sessão.
 - **Aceite:** senha errada mostra a mensagem da API. Conta bloqueada mostra o tempo de espera (429, PR #9).
 
-### 7. Mostrar a mensagem da API nas ações destrutivas
+### 7. ~~Mostrar a mensagem da API nas ações destrutivas~~ (resolvido na #16 e na #18)
 - **Onde:** `admin/Schools.tsx`, `admin/Users.tsx`, `director/Classes.tsx`, `director/Staff.tsx`, `director/Students.tsx`, `teacher/Grades.tsx`
 - **Problema:** excluir, ativar e desativar usam `catch {}` com texto fixo e escondem o motivo, por exemplo "a turma possui alunos, desative em vez de excluir".
 - **Correção:** `toast.error(errorMessage(err, '…'))`, como os formulários já fazem. Com o PR #7, os erros 401, 403 e 400 também trazem `message`.
@@ -87,7 +87,7 @@ O erro de tipo em `pages/admin/Users.tsx` foi corrigido antes do commit da refor
 - **Problema:** nenhuma tela cria trabalhos, então o portal do aluno fica sempre vazio.
 - **Correção:** formulário que chama `POST /api/pending-works` para cada aluno ativo da turma.
 
-### 13. Notas sem duplicidade e período validado
+### 13. ~~Notas sem duplicidade e período validado~~ (resolvido na #18)
 - **Onde:** `pages/teacher/Grades.tsx`
 - **Contexto:** com o PR #11, a API devolve 409 para a mesma matéria e período e 400 para período fora da lista.
 - **Correção:** mostrar a mensagem da API e, ao lançar, oferecer editar a nota existente.
