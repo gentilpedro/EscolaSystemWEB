@@ -230,3 +230,30 @@ test('conta bloqueada por senha errada aparece na lista e o admin desbloqueia', 
   await expect(row.getByText(/^Bloqueada até/)).toHaveCount(0);
   expect(await apiTokenStatus(director.email, director.password)).toBe(200);
 });
+
+test('Configurações mostram os aparelhos conectados e saem deles', async ({ page }) => {
+  const meStatus = async (token: string) =>
+    (await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })).status;
+  const outro = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+
+  await loginAs(page, 'admin');
+  await page.goto('/admin/settings');
+  const devices = page.getByRole('list', { name: 'Aparelhos conectados' });
+  await expect(devices.getByText('Este aparelho', { exact: true })).toBeVisible();
+
+  // Sair de todos os outros: só este continua
+  await page.getByRole('button', { name: 'Sair de todos os outros' }).click();
+  await openDialog(page).getByRole('button', { name: 'Sair dos outros' }).click();
+  await expect(page.getByText('Só este aparelho continua conectado.')).toBeVisible();
+  await expect(devices.getByRole('listitem')).toHaveCount(1);
+  expect(await meStatus(outro)).toBe(401);
+
+  // Sair de um aparelho específico
+  const terceiro = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  await page.reload();
+  await devices.getByRole('button', { name: /^Sair deste aparelho/ }).click();
+  await openDialog(page).getByRole('button', { name: 'Sair do aparelho' }).click();
+  await expect(page.getByText(/^Você saiu de /)).toBeVisible();
+  expect(await meStatus(terceiro)).toBe(401);
+  await expect(devices.getByText('Este aparelho', { exact: true })).toBeVisible();
+});

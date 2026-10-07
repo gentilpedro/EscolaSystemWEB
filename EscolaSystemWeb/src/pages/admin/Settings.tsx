@@ -6,6 +6,7 @@ import { Alert, Button, NewPasswordField, PageHeader, Panel, ReadOnlyField, Text
 import { passwordIssues } from '../../lib/password';
 import { emailError, minLengthError } from '../../lib/contact';
 import { SESSION_ROLE_LABEL } from '../../lib/school';
+import { ConnectedDevices } from '../../features/settings/ConnectedDevices';
 
 const EMPTY_FORM = { current: '', newPassword: '', confirm: '' };
 
@@ -89,6 +90,8 @@ export const AdminSettings: React.FC = () => {
             </Button>
           </form>
         </Panel>
+
+        <ConnectedDevices />
 
         <Panel title="Informações do sistema" titleId="sistema" flush>
           <dl className="divide-y divide-rule text-[0.9375rem]">

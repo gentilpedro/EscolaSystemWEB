@@ -21,6 +21,7 @@ import type {
   PendingWorkItem,
   School,
   SchoolPayload,
+  SessionItem,
   StudentItem,
   StudentPayload,
   UpdateAttendancePayload,
@@ -169,6 +170,11 @@ export const authApi = {
   /** Redefine a senha de outra pessoa (admin, ou diretor para a própria escola) */
   resetPassword: (email: string, newPassword: string) => api.post<void>('/auth/reset-password', { email, newPassword }),
   me: () => api.get<ApiSessionUser>('/auth/me'),
+  /** Aparelhos conectados da própria conta, o atual primeiro */
+  sessions: () => api.get<SessionItem[]>('/auth/sessions'),
+  revokeSession: (id: string) => api.delete<void>(`/auth/sessions/${id}`),
+  /** Sai de todos os outros aparelhos e mantém este */
+  revokeOtherSessions: () => api.delete<void>('/auth/sessions'),
 };
 
 export const schoolApi = {
