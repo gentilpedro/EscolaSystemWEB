@@ -58,6 +58,13 @@ test.describe('Acessibilidade do portal do admin (WCAG 2.1 AA)', () => {
     expect(await violations(page)).toEqual([]);
   });
 
+  test('página da escola sem violações', async ({ page }) => {
+    await page.goto(`/admin/schools?busca=${encodeURIComponent('Jardim das Flores')}`);
+    await page.getByRole('table', { name: 'Escolas cadastradas' }).getByRole('link', { name: 'Escola Estadual Jardim das Flores' }).click();
+    await page.waitForLoadState('networkidle');
+    expect(await violations(page)).toEqual([]);
+  });
+
   test('com zoom de 200% as telas não rolam para o lado', async ({ page }) => {
     // 1366 px a 200% equivale a uma janela de 683 px
     await page.setViewportSize({ width: 683, height: 768 });

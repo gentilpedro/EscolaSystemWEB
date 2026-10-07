@@ -17,6 +17,7 @@ import { AdminSchools } from './pages/admin/Schools';
 import { AdminUsers } from './pages/admin/Users';
 import { AdminSettings } from './pages/admin/Settings';
 import { AdminActivity } from './pages/admin/Activity';
+import { AdminSchoolDetail } from './pages/admin/SchoolDetail';
 import { TicketsPage } from './features/tickets/TicketsPage';
 import { TicketDetailPage } from './features/tickets/TicketDetailPage';
 
@@ -84,6 +85,15 @@ function PrivateLayout() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
                 <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/schools/:id"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                <AdminSchoolDetail />
               </ProtectedRoute>
             }
           />

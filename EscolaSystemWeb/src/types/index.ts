@@ -290,6 +290,35 @@ export interface TicketFilters {
   schoolId?: string;
 }
 
+/** Uma escola para a administração (GET /api/admin/schools/{id}/summary): contato da direção e contagens */
+export interface SchoolSummary {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  isActive: boolean;
+  createdAt: string;
+  director: { id: string; name: string; email: string; phone?: string | null } | null;
+  activeClasses: number;
+  activeStudents: number;
+  users: { directors: number; teachers: number; orientadores: number; parents: number; students: number; total: number };
+  /** Último lançamento de nota ou chamada; null quando a escola ainda não lançou nada */
+  lastRecordAt: string | null;
+}
+
+/** Linha da visão geral das escolas (GET /api/admin/schools/summary) */
+export interface SchoolOverview {
+  id: string;
+  name: string;
+  isActive: boolean;
+  hasDirector: boolean;
+  activeClasses: number;
+  activeStudents: number;
+  activeUsers: number;
+  lastRecordAt: string | null;
+}
+
 export interface AdminStats {
   totalSchools: number;
   activeSchools: number;
