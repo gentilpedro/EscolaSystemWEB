@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, School as SchoolIcon } from 'lucide-react';
+import { Plus, Pencil, Power, PowerOff, Trash2, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
 import { schoolApi, userApi } from '../../services/api';
 import {
@@ -66,7 +66,7 @@ export const AdminSchools: React.FC = () => {
   const handleDelete = async (school: School) => {
     const ok = await confirm({
       title: `Excluir a escola ${school.name}?`,
-      consequence: 'Só é possível excluir escola sem turmas nem usuários. Para suspender uma escola em uso, edite e desmarque "Escola ativa".',
+      consequence: 'Só é possível excluir escola sem turmas nem usuários. Para suspender uma escola em uso, use Desativar.',
       confirmLabel: 'Excluir escola',
     });
     if (!ok) return;
@@ -76,6 +76,19 @@ export const AdminSchools: React.FC = () => {
       toast.success(`${school.name} foi excluída.`);
     } catch (err) {
       toast.error(errorMessage(err, 'Erro ao excluir escola.'));
+    }
+  };
+
+  const handleToggleActive = async (school: School) => {
+    const activate = !school.isActive;
+    if (!(await confirmActivation(confirm, school, activate))) return;
+    try {
+      const { name, email, address, phone } = school;
+      await schoolApi.update(school.id, { name, email, address, phone, isActive: activate });
+      setSchools(prev => prev.map(s => (s.id === school.id ? { ...s, isActive: activate } : s)));
+      toast.success(activate ? `${school.name} foi reativada.` : `${school.name} foi desativada.`);
+    } catch (err) {
+      toast.error(errorMessage(err, activate ? 'Erro ao reativar escola.' : 'Erro ao desativar escola.'));
     }
   };
 
@@ -147,14 +160,27 @@ export const AdminSchools: React.FC = () => {
                     <Td align="right">
                       <RowActions
                         destructive={
-                          <IconButton
-                            tone="danger"
-                            label={`Excluir ${school.name}`}
-                            icon={<Trash2 className="h-5 w-5" />}
-                            onClick={() => handleDelete(school)}
-                          />
+                          <>
+                            {school.isActive && (
+                              <IconButton
+                                tone="danger"
+                                label={`Desativar ${school.name}`}
+                                icon={<PowerOff className="h-5 w-5" />}
+                                onClick={() => handleToggleActive(school)}
+                              />
+                            )}
+                            <IconButton
+                              tone="danger"
+                              label={`Excluir ${school.name}`}
+                              icon={<Trash2 className="h-5 w-5" />}
+                              onClick={() => handleDelete(school)}
+                            />
+                          </>
                         }
                       >
+                        {!school.isActive && (
+                          <IconButton label={`Reativar ${school.name}`} icon={<Power className="h-5 w-5" />} onClick={() => handleToggleActive(school)} />
+                        )}
                         <IconButton
                           label={`Editar ${school.name}`}
                           icon={<Pencil className="h-5 w-5" />}
@@ -185,6 +211,36 @@ export const AdminSchools: React.FC = () => {
         />
       )}
     </>
+  );
+};
+
+/** Ligar ou desligar a escola afeta todo mundo dela: confirma dizendo quantas pessoas. */
+const confirmActivation = async (confirm: ReturnType<typeof useConfirm>, target: School, activate: boolean) => {
+  let people: number | null = null;
+  try {
+    people = (await userApi.list(1, 1, { schoolId: target.id, isActive: true })).totalCount;
+  } catch {
+    // Sem a contagem, a confirmação continua, só sem o número
+  }
+  const who = people === null ? 'As pessoas desta escola' : people === 0 ? 'Ninguém' : plural(people, 'pessoa', 'pessoas');
+  return confirm(
+    activate
+      ? {
+          title: `Reativar ${target.name}?`,
+          consequence: `${who} com conta ativa ${people === 1 ? 'volta' : 'voltam'} a entrar no sistema.`,
+          confirmLabel: 'Reativar escola',
+          reversible: true,
+          tone: 'primary',
+        }
+      : {
+          title: `Desativar ${target.name}?`,
+          consequence:
+            people === 0
+              ? 'Ninguém da escola tem conta ativa agora. Nada é apagado, e a escola pode ser reativada depois.'
+              : `${who} ${people === 1 ? 'perde' : 'perdem'} o acesso na hora: não ${people === 1 ? 'consegue' : 'conseguem'} entrar até a escola ser reativada. Nada é apagado.`,
+          confirmLabel: 'Desativar escola',
+          reversible: true,
+        },
   );
 };
 
@@ -224,8 +280,7 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ school, onClose, onSave }) =>
       setError('Corrija os campos destacados.');
       return;
     }
-    // Ligar ou desligar a escola afeta todo mundo dela: confirma dizendo quantas pessoas
-    if (school && formData.isActive !== school.isActive && !(await confirmActivation(school, formData.isActive))) return;
+    if (school && formData.isActive !== school.isActive && !(await confirmActivation(confirm, school, formData.isActive))) return;
     setSaving(true);
     setError(null);
     try {
@@ -240,35 +295,6 @@ const SchoolModal: React.FC<SchoolModalProps> = ({ school, onClose, onSave }) =>
     } finally {
       setSaving(false);
     }
-  };
-
-  const confirmActivation = async (target: School, activate: boolean) => {
-    let people: number | null = null;
-    try {
-      people = (await userApi.list(1, 1, { schoolId: target.id, isActive: true })).totalCount;
-    } catch {
-      // Sem a contagem, a confirmação continua, só sem o número
-    }
-    const who = people === null ? 'As pessoas desta escola' : people === 0 ? 'Ninguém' : plural(people, 'pessoa', 'pessoas');
-    return confirm(
-      activate
-        ? {
-            title: `Reativar ${target.name}?`,
-            consequence: `${who} com conta ativa ${people === 1 ? 'volta' : 'voltam'} a entrar no sistema.`,
-            confirmLabel: 'Reativar escola',
-            reversible: true,
-            tone: 'primary',
-          }
-        : {
-            title: `Desativar ${target.name}?`,
-            consequence:
-              people === 0
-                ? 'Ninguém da escola tem conta ativa agora. Nada é apagado, e a escola pode ser reativada depois.'
-                : `${who} ${people === 1 ? 'perde' : 'perdem'} o acesso na hora: não ${people === 1 ? 'consegue' : 'conseguem'} entrar até a escola ser reativada. Nada é apagado.`,
-            confirmLabel: 'Desativar escola',
-            reversible: true,
-          },
-    );
   };
 
   return (
