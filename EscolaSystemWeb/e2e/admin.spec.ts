@@ -354,6 +354,11 @@ test('página da escola mostra a direção e os números, sem dados da equipe', 
   const direction = page.getByRole('region', { name: 'Direção' });
   await expect(direction).toContainText('Marta Ribeiro');
   await expect(direction).toContainText('diretora@escolademo.com.br');
+  // Atalho para o diretor em Usuários, onde ficam senha, bloqueio e aparelhos
+  await direction.getByRole('link', { name: /^Ver em Usuários/ }).click();
+  await expect(page.getByLabel('Pesquisar usuários')).toHaveValue('diretora@escolademo.com.br');
+  await expect(page.getByRole('row', { name: /diretora@escolademo\.com\.br/ })).toBeVisible();
+  await page.goBack();
   const usage = page.getByRole('region', { name: 'Uso do sistema' });
   await expect(usage).toContainText('Turmas ativas');
   await expect(usage).toContainText('Os nomes ficam com a direção da escola.');
