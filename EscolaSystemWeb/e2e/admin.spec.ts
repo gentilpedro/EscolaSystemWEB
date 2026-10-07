@@ -137,3 +137,32 @@ test('painel aponta escola sem diretor e leva ao cadastro com a escola escolhida
   await expect(dialog.getByLabel('Perfil')).toHaveValue('2');
   await expect(dialog.getByLabel('Escola')).toHaveValue(school.body.id);
 });
+
+test('desativa e reativa a escola pela própria linha, com a confirmação', async ({ page }) => {
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  const school = await apiPost<{ id: string; name: string }>(admin, '/schools', {
+    name: `Escola Na Linha ${suffix}`,
+    address: 'Rua Nova, 20',
+    phone: '(51) 3333-6666',
+    email: `na.linha.${suffix}@escola.com.br`,
+  });
+  expect(school.status).toBe(201);
+
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/schools?busca=${encodeURIComponent(school.body.name)}`);
+  const row = page.getByRole('row', { name: new RegExp(school.body.name) });
+
+  await row.getByRole('button', { name: `Desativar ${school.body.name}` }).click();
+  let dialog = openDialog(page);
+  await expect(dialog.getByText('Ninguém da escola tem conta ativa agora.', { exact: false })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Desativar escola' }).click();
+  await expect(page.getByText(`${school.body.name} foi desativada.`)).toBeVisible();
+  await expect(row.getByRole('button', { name: `Desativar ${school.body.name}` })).toHaveCount(0);
+
+  await row.getByRole('button', { name: `Reativar ${school.body.name}` }).click();
+  dialog = openDialog(page);
+  await dialog.getByRole('button', { name: 'Reativar escola' }).click();
+  await expect(page.getByText(`${school.body.name} foi reativada.`)).toBeVisible();
+  await expect(row.getByRole('button', { name: `Desativar ${school.body.name}` })).toBeVisible();
+});
