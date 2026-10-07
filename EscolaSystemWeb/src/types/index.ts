@@ -196,6 +196,16 @@ export interface ClassReport {
 }
 
 /** GET /api/admin/stats */
+/** Sessão aberta da própria conta (GET /api/auth/sessions) */
+export interface SessionItem {
+  id: string;
+  /** Navegador e sistema resumidos, como "Chrome no Windows" */
+  device: string;
+  createdAt: string;
+  lastUsedAt: string;
+  isCurrent: boolean;
+}
+
 export interface AdminStats {
   totalSchools: number;
   activeSchools: number;
