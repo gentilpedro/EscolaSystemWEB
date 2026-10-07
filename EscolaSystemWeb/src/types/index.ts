@@ -56,6 +56,8 @@ export interface UserListItem {
   schools?: { id: string; name: string }[] | null;
   /** Até quando a conta fica bloqueada por senha errada; null quando não está bloqueada */
   lockedUntil?: string | null;
+  /** Último login ou renovação de sessão (só para o admin); null quando nunca entrou */
+  lastAccessAt?: string | null;
 }
 
 /** Filtros de GET /api/users; a API aplica todos dentro do escopo do perfil. */

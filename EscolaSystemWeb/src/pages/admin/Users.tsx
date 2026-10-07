@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { KeyRound, Plus, Pencil, Unlock, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import { Download, KeyRound, Plus, Pencil, Unlock, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import type { UserListItem, PagedResult, School } from '../../types';
 import { ROLES, RoleId } from '../../types';
 import { authApi, userApi, schoolApi } from '../../services/api';
@@ -39,7 +39,8 @@ import {
   useConfirm,
   useToast,
 } from '../../components/ui';
-import { formatTime, plural } from '../../lib/format';
+import { formatDateTime, formatTime, plural, todayIso } from '../../lib/format';
+import { downloadCsv } from '../../lib/csv';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
 
@@ -142,6 +143,40 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  // A planilha leva a lista filtrada inteira (todas as páginas), sem CPF
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const all = await listAll<UserListItem>((p, size) =>
+        userApi.list(p, size, {
+          search: search || undefined,
+          roleId: roleFilter ? Number(roleFilter) : undefined,
+          schoolId: schoolFilter || undefined,
+        }),
+      );
+      downloadCsv(`administradores-e-diretores-${todayIso()}.csv`, [
+        ['Nome', 'E-mail', 'Perfil', 'Escola', 'Situação', 'Bloqueada até', 'Último acesso'],
+        ...all.items.map(u => [
+          u.name,
+          u.email,
+          ROLES.find(r => r.name === u.role)?.label ?? u.role,
+          schoolsOf(u) ?? '',
+          u.isActive ? 'Ativo' : 'Inativo',
+          isLocked(u) ? formatDateTime(u.lockedUntil) : '',
+          // undefined: a API não informou; null: a pessoa nunca entrou
+          u.lastAccessAt === undefined ? '' : u.lastAccessAt ? formatDateTime(u.lastAccessAt) : 'Nunca entrou',
+        ]),
+      ]);
+      toast.success(`${plural(all.items.length, 'conta exportada', 'contas exportadas')}.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao exportar a lista.'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleUnlock = async (user: UserListItem) => {
     const ok = await confirm({
       title: `Desbloquear ${user.name}?`,
@@ -215,15 +250,26 @@ export const AdminUsers: React.FC = () => {
             : undefined
         }
         actions={
-          <Button
-            icon={<Plus className="h-4 w-4" aria-hidden="true" />}
-            onClick={() => {
-              setEditingUser(null);
-              setShowModal(true);
-            }}
-          >
-            Novo usuário
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              icon={<Download className="h-4 w-4" aria-hidden="true" />}
+              onClick={handleExport}
+              loading={exporting}
+              loadingLabel="Exportando…"
+            >
+              Exportar
+            </Button>
+            <Button
+              icon={<Plus className="h-4 w-4" aria-hidden="true" />}
+              onClick={() => {
+                setEditingUser(null);
+                setShowModal(true);
+              }}
+            >
+              Novo usuário
+            </Button>
+          </>
         }
       />
 
