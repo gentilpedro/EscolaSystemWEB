@@ -60,6 +60,8 @@ export const AdminUsers: React.FC = () => {
   // A busca vai para a API só depois de uma pausa na digitação
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [schoolFilter, setSchoolFilter] = useState('');
+  const [schools, setSchools] = useState<School[]>([]);
   const [page, setPage] = useState(1);
   // Atalho do painel: ?novo=diretor&escola=<id> abre o cadastro de diretor já com a escola
   const [searchParams] = useSearchParams();
@@ -76,22 +78,30 @@ export const AdminUsers: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const query = `${page}|${search}|${roleFilter}`;
+  useEffect(() => {
+    // Sem a lista de escolas, o filtro só não aparece; a lista de usuários continua
+    listAll<School>((p, size) => schoolApi.list(p, size))
+      .then(data => setSchools([...data.items].sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setSchools([]));
+  }, []);
+
+  const query = `${page}|${search}|${roleFilter}|${schoolFilter}`;
 
   const fetchUsers = useCallback(async () => {
     try {
       const data: PagedResult<UserListItem> = await userApi.list(page, PAGE_SIZE, {
         search: search || undefined,
         roleId: roleFilter ? Number(roleFilter) : undefined,
+        schoolId: schoolFilter || undefined,
       });
       setPagedData(data);
       setError(null);
     } catch {
       setError('Erro ao carregar usuários.');
     } finally {
-      setLoadedQuery(`${page}|${search}|${roleFilter}`);
+      setLoadedQuery(`${page}|${search}|${roleFilter}|${schoolFilter}`);
     }
-  }, [page, search, roleFilter]);
+  }, [page, search, roleFilter, schoolFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
@@ -131,10 +141,46 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
-  const filtering = search !== '' || roleFilter !== '';
+  const filtering = search !== '' || roleFilter !== '' || schoolFilter !== '';
   const users = pagedData?.items ?? [];
   const loading = loadedQuery !== query;
   const isFirstLoad = loading && !pagedData;
+
+  const actionsFor = (user: UserListItem) => (
+    <RowActions
+      destructive={
+        // Ninguém desativa a própria conta (a API também recusa)
+        user.isActive &&
+        user.id !== sessionUser?.id && (
+          <IconButton tone="danger" label={`Desativar ${user.name}`} icon={<UserX className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />
+        )
+      }
+    >
+      {!user.isActive && <IconButton label={`Ativar ${user.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />}
+      {/* A própria senha é trocada em Configurações, com a senha atual */}
+      {user.isActive && user.id !== sessionUser?.id && (
+        <IconButton label={`Redefinir senha de ${user.name}`} icon={<KeyRound className="h-5 w-5" />} onClick={() => setResettingUser(user)} />
+      )}
+      <IconButton
+        label={`Editar ${user.name}`}
+        icon={<Pencil className="h-5 w-5" />}
+        onClick={() => {
+          setEditingUser(user);
+          setShowModal(true);
+        }}
+      />
+    </RowActions>
+  );
+
+  const empty = (
+    <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" compact>
+      {filtering ? 'Ajuste a busca ou os filtros.' : undefined}
+    </EmptyState>
+  );
+
+  const pagination = pagedData && pagedData.totalPages > 1 && (
+    <Pagination page={page} totalPages={pagedData.totalPages} totalCount={pagedData.totalCount} pageSize={PAGE_SIZE} noun="usuários" onPage={setPage} />
+  );
 
   return (
     <>
@@ -182,6 +228,23 @@ export const AdminUsers: React.FC = () => {
                 </option>
               ))}
             </FilterSelect>
+            {schools.length > 0 && (
+              <FilterSelect
+                label="Filtrar por escola"
+                value={schoolFilter}
+                onChange={v => {
+                  setSchoolFilter(v);
+                  setPage(1);
+                }}
+              >
+                <option value="">Todas as escolas</option>
+                {schools.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.isActive ? s.name : `${s.name} (inativa)`}
+                  </option>
+                ))}
+              </FilterSelect>
+            )}
           </FilterBar>
 
           {filtering && pagedData && (
@@ -193,97 +256,69 @@ export const AdminUsers: React.FC = () => {
           {loading ? (
             <BlockLoader label="Carregando usuários…" rows={8} />
           ) : (
-            <TableFrame
-              caption="Usuários"
-              minWidth="56rem"
-              footer={
-                pagedData &&
-                pagedData.totalPages > 1 && (
-                  <Pagination
-                    page={page}
-                    totalPages={pagedData.totalPages}
-                    totalCount={pagedData.totalCount}
-                    pageSize={PAGE_SIZE}
-                    noun="usuários"
-                    onPage={setPage}
-                  />
-                )
-              }
-            >
-              <THead>
-                <Th sticky>Nome</Th>
-                <Th>E-mail</Th>
-                <Th>Perfil</Th>
-                <Th>Escola</Th>
-                <Th>Situação</Th>
-                <Th align="right" srOnly>
-                  Ações
-                </Th>
-              </THead>
-              <TBody>
+            <>
+              {/* Celular: um cartão por usuário, sem rolar para o lado */}
+              <div className="md:hidden">
                 {users.length === 0 ? (
-                  <TableEmptyRow colSpan={6}>
-                    <EmptyState icon={UsersIcon} title="Nenhum usuário encontrado" compact>
-                      {filtering ? 'Ajuste a busca ou o filtro de perfil.' : undefined}
-                    </EmptyState>
-                  </TableEmptyRow>
+                  <div className="rounded-lg border border-rule bg-surface">{empty}</div>
                 ) : (
-                  users.map(user => (
-                    <Tr key={user.id}>
-                      <Td sticky strong className="whitespace-nowrap">
-                        {user.name}
-                      </Td>
-                      <Td>{user.email}</Td>
-                      <Td>
-                        <RoleTag role={user.role} />
-                      </Td>
-                      <Td>
-                        {user.schools && user.schools.length > 0 ? (
-                          user.schools.map(sc => sc.name).join(', ')
-                        ) : (
-                          user.schoolName ?? <span className="text-ink-3">—</span>
-                        )}
-                      </Td>
-                      <Td>
-                        <ActiveStamp active={user.isActive} />
-                      </Td>
-                      <Td align="right">
-                        <RowActions
-                          destructive={
-                            // Ninguém desativa a própria conta (a API também recusa)
-                            user.isActive &&
-                            user.id !== sessionUser?.id && (
-                              <IconButton
-                                tone="danger"
-                                label={`Desativar ${user.name}`}
-                                icon={<UserX className="h-5 w-5" />}
-                                onClick={() => handleToggleActive(user)}
-                              />
-                            )
-                          }
-                        >
-                          {!user.isActive && (
-                            <IconButton label={`Ativar ${user.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />
-                          )}
-                          {/* A própria senha é trocada em Configurações, com a senha atual */}
-                          {user.isActive && user.id !== sessionUser?.id && (
-                            <IconButton label={`Redefinir senha de ${user.name}`} icon={<KeyRound className="h-5 w-5" />} onClick={() => setResettingUser(user)} />
-                          )}
-                          <IconButton
-                            label={`Editar ${user.name}`}
-                            icon={<Pencil className="h-5 w-5" />}
-                            onClick={() => {
-                              setEditingUser(user);
-                              setShowModal(true);
-                            }}
-                          />
-                        </RowActions>
-                      </Td>
-                    </Tr>
-                  ))
+                  <ul className="space-y-3" aria-label="Usuários">
+                    {users.map(user => (
+                      <li key={user.id} className="rounded-lg border border-rule bg-surface px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-ink">{user.name}</p>
+                            <p className="break-all text-sm text-ink-3">{user.email}</p>
+                          </div>
+                          <ActiveStamp active={user.isActive} />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
+                          <RoleTag role={user.role} />
+                          <span>{schoolsOf(user) ?? 'Sem escola'}</span>
+                        </div>
+                        <div className="mt-2 border-t border-rule pt-2">{actionsFor(user)}</div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              </TBody>
-            </TableFrame>
+                {pagination && <div className="mt-3 overflow-hidden rounded-lg border border-rule bg-surface">{pagination}</div>}
+              </div>
+
+              <TableFrame caption="Usuários" minWidth="56rem" className="hidden md:block" footer={pagination}>
+                <THead>
+                  <Th sticky>Nome</Th>
+                  <Th>E-mail</Th>
+                  <Th>Perfil</Th>
+                  <Th>Escola</Th>
+                  <Th>Situação</Th>
+                  <Th align="right" srOnly>
+                    Ações
+                  </Th>
+                </THead>
+                <TBody>
+                  {users.length === 0 ? (
+                    <TableEmptyRow colSpan={6}>{empty}</TableEmptyRow>
+                  ) : (
+                    users.map(user => (
+                      <Tr key={user.id}>
+                        <Td sticky strong className="whitespace-nowrap">
+                          {user.name}
+                        </Td>
+                        <Td>{user.email}</Td>
+                        <Td>
+                          <RoleTag role={user.role} />
+                        </Td>
+                        <Td>{schoolsOf(user) ?? <span className="text-ink-3">—</span>}</Td>
+                        <Td>
+                          <ActiveStamp active={user.isActive} />
+                        </Td>
+                        <Td align="right">{actionsFor(user)}</Td>
+                      </Tr>
+                    ))
+                  )}
+                </TBody>
+              </TableFrame>
+            </>
           )}
         </>
       )}
@@ -314,6 +349,10 @@ export const AdminUsers: React.FC = () => {
     </>
   );
 };
+
+/** Escolas em que a pessoa está (várias para professor, orientador e responsável) */
+const schoolsOf = (user: UserListItem): string | null =>
+  user.schools && user.schools.length > 0 ? user.schools.map(sc => sc.name).join(', ') : (user.schoolName ?? null);
 
 interface UserModalProps {
   user: UserListItem | null;

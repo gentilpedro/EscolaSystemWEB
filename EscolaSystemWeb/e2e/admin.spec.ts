@@ -185,3 +185,26 @@ test('Configurações mostram a versão do build e editam o próprio nome', asyn
   await expect(page.getByLabel(/^Nome/)).toHaveValue(`${original} Teste`);
   await rename(original);
 });
+
+test('usuários filtram por escola e viram cartões no celular', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.goto('/admin/users');
+  const filter = page.getByLabel('Filtrar por escola');
+  // Primeira escola de verdade da lista (a opção 0 é "Todas as escolas")
+  const school = (await filter.locator('option').nth(1).textContent())!.replace(/ \(inativa\)$/, '');
+  await filter.selectOption({ index: 1 });
+  await expect(page.getByText(/encontrados? em toda a rede/)).toBeVisible();
+
+  const table = page.getByRole('table', { name: 'Usuários' });
+  const rows = table.locator('tbody tr');
+  await expect(rows.first()).toBeVisible();
+  for (const row of await rows.all()) await expect(row).toContainText(school);
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(table).toBeHidden();
+  const cards = page.getByRole('list', { name: 'Usuários' }).getByRole('listitem');
+  await expect(cards.first()).toContainText(school);
+  await expect(cards.first().getByRole('button', { name: /^Editar / })).toBeVisible();
+  // Sem rolagem lateral na página
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
