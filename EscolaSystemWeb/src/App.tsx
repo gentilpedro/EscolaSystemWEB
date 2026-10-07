@@ -16,6 +16,7 @@ import { AdminDashboard } from './pages/admin/Dashboard';
 import { AdminSchools } from './pages/admin/Schools';
 import { AdminUsers } from './pages/admin/Users';
 import { AdminSettings } from './pages/admin/Settings';
+import { AdminActivity } from './pages/admin/Activity';
 
 // Director Pages
 import { DirectorDashboard } from './pages/director/Dashboard';
@@ -81,6 +82,15 @@ function PrivateLayout() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
                 <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/activity"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                <AdminActivity />
               </ProtectedRoute>
             }
           />

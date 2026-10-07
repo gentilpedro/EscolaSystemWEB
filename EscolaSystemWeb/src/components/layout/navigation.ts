@@ -12,6 +12,7 @@ import {
   PenSquare,
   CalendarCheck,
   ListTodo,
+  History,
 } from 'lucide-react';
 import type React from 'react';
 import { UserRole } from '../../types';
@@ -30,6 +31,7 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Painel', href: '/admin', icon: LayoutDashboard, end: true },
     { label: 'Escolas', href: '/admin/schools', icon: School },
     { label: 'Usuários', href: '/admin/users', icon: Users },
+    { label: 'Atividades', href: '/admin/activity', icon: History },
     { label: 'Configurações', href: '/admin/settings', icon: Settings },
   ],
   [UserRole.DIRECTOR]: [

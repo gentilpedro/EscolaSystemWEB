@@ -257,3 +257,34 @@ test('Configurações mostram os aparelhos conectados e saem deles', async ({ pa
   expect(await meStatus(terceiro)).toBe(401);
   await expect(devices.getByText('Este aparelho', { exact: true })).toBeVisible();
 });
+
+test('Atividades mostram quem fez o quê, com filtro por ação e período', async ({ page }) => {
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  const body = { name: `Escola Atividade ${suffix}`, address: 'Rua D, 40', phone: '(51) 3333-8888', email: `atividade.${suffix}@escola.com.br` };
+  const school = await apiPost<{ id: string; name: string }>(admin, '/schools', body);
+  expect(school.status).toBe(201);
+  const put = await fetch(`${API_URL}/schools/${school.body.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${admin}` },
+    body: JSON.stringify({ ...body, isActive: false }),
+  });
+  expect(put.status).toBe(200);
+
+  await loginAs(page, 'admin');
+  await page.getByRole('link', { name: 'Atividades' }).first().click();
+  const list = page.getByRole('region', { name: 'Atividades' });
+  const deactivated = list.getByRole('listitem').filter({ hasText: school.body.name }).filter({ hasText: 'Escola desativada' });
+  await expect(deactivated).toBeVisible();
+  await expect(deactivated).toContainText('por Administrador');
+
+  await page.getByLabel('Ação', { exact: true }).selectOption({ label: 'Escola cadastrada' });
+  await expect(list.getByRole('listitem').filter({ hasText: school.body.name })).toHaveCount(1);
+  await expect(list.getByText('Escola desativada')).toHaveCount(0);
+
+  // Período que termina ontem: a escola de hoje some
+  const yesterday = new Date(Date.now() - 86_400_000);
+  const iso = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  await page.getByLabel('Até').fill(iso);
+  await expect(list.getByText(school.body.name)).toHaveCount(0);
+});
