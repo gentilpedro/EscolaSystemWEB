@@ -213,3 +213,20 @@ test('usuários filtram por escola e viram cartões no celular', async ({ page }
   // Sem rolagem lateral na página
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('conta bloqueada por senha errada aparece na lista e o admin desbloqueia', async ({ page }) => {
+  const director = ACCOUNTS.director;
+  for (let i = 0; i < 5; i++) await apiTokenStatus(director.email, 'Errada@123');
+  expect(await apiTokenStatus(director.email, director.password)).toBe(429);
+
+  await loginAs(page, 'admin');
+  await page.goto('/admin/users');
+  const row = page.getByRole('row', { name: new RegExp(director.email) });
+  await expect(row.getByText(/^Bloqueada até \d{2}:\d{2}$/)).toBeVisible();
+
+  await row.getByRole('button', { name: /^Desbloquear / }).click();
+  await openDialog(page).getByRole('button', { name: 'Desbloquear' }).click();
+  await expect(page.getByText(/foi desbloqueado\.$/)).toBeVisible();
+  await expect(row.getByText(/^Bloqueada até/)).toHaveCount(0);
+  expect(await apiTokenStatus(director.email, director.password)).toBe(200);
+});

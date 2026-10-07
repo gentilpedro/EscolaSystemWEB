@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { KeyRound, Plus, Pencil, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import { KeyRound, Plus, Pencil, Unlock, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import type { UserListItem, PagedResult, School } from '../../types';
 import { ROLES, RoleId } from '../../types';
 import { authApi, userApi, schoolApi } from '../../services/api';
@@ -25,6 +25,7 @@ import {
   RoleTag,
   RowActions,
   SearchInput,
+  Stamp,
   SelectField,
   TableEmptyRow,
   TableFrame,
@@ -38,7 +39,7 @@ import {
   useConfirm,
   useToast,
 } from '../../components/ui';
-import { plural } from '../../lib/format';
+import { formatTime, plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
 import { passwordIssues } from '../../lib/password';
 
@@ -140,6 +141,25 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const handleUnlock = async (user: UserListItem) => {
+    const ok = await confirm({
+      title: `Desbloquear ${user.name}?`,
+      description: user.email,
+      consequence: 'A pessoa volta a entrar na hora, com a senha que já tem, sem esperar o fim do bloqueio.',
+      confirmLabel: 'Desbloquear',
+      reversible: true,
+      tone: 'primary',
+    });
+    if (!ok) return;
+    try {
+      await userApi.unlock(user.id);
+      toast.success(`${user.name} foi desbloqueado.`);
+      fetchUsers();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao desbloquear.'));
+    }
+  };
+
   const filtering = search !== '' || roleFilter !== '' || schoolFilter !== '';
   const users = pagedData?.items ?? [];
   const loading = loadedQuery !== query;
@@ -156,6 +176,9 @@ export const AdminUsers: React.FC = () => {
       }
     >
       {!user.isActive && <IconButton label={`Ativar ${user.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />}
+      {isLocked(user) && user.id !== sessionUser?.id && (
+        <IconButton label={`Desbloquear ${user.name}`} icon={<Unlock className="h-5 w-5" />} onClick={() => handleUnlock(user)} />
+      )}
       {/* A própria senha é trocada em Configurações, com a senha atual */}
       {user.isActive && user.id !== sessionUser?.id && (
         <IconButton label={`Redefinir senha de ${user.name}`} icon={<KeyRound className="h-5 w-5" />} onClick={() => setResettingUser(user)} />
@@ -273,7 +296,7 @@ export const AdminUsers: React.FC = () => {
                             <p className="font-semibold text-ink">{user.name}</p>
                             <p className="break-all text-sm text-ink-3">{user.email}</p>
                           </div>
-                          <ActiveStamp active={user.isActive} />
+                          <AccountStatus user={user} />
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
                           <RoleTag role={user.role} />
@@ -313,7 +336,7 @@ export const AdminUsers: React.FC = () => {
                         </Td>
                         <Td>{schoolsOf(user) ?? <span className="text-ink-3">—</span>}</Td>
                         <Td>
-                          <ActiveStamp active={user.isActive} />
+                          <AccountStatus user={user} />
                         </Td>
                         <Td align="right">{actionsFor(user)}</Td>
                       </Tr>
@@ -352,6 +375,17 @@ export const AdminUsers: React.FC = () => {
     </>
   );
 };
+
+/** Bloqueio por senha errada ainda valendo */
+const isLocked = (user: UserListItem) => !!user.lockedUntil && new Date(user.lockedUntil) > new Date();
+
+/** Situação da conta: ativa ou inativa e, se for o caso, até quando está bloqueada (em texto, não só cor) */
+const AccountStatus: React.FC<{ user: UserListItem }> = ({ user }) => (
+  <span className="inline-flex flex-wrap items-center gap-1.5">
+    <ActiveStamp active={user.isActive} />
+    {isLocked(user) && <Stamp tone="amber">Bloqueada até {formatTime(new Date(user.lockedUntil!))}</Stamp>}
+  </span>
+);
 
 /** Escolas em que a pessoa está (várias para professor, orientador e responsável) */
 const schoolsOf = (user: UserListItem): string | null =>
