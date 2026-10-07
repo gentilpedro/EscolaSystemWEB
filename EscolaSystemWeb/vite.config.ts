@@ -1,5 +1,9 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
+
+// A versão mostrada em Configurações acompanha o package.json (atualizar junto com a tag do release)
+const appVersion: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8')).version
 
 /**
  * Content-Security-Policy do build: scripts, estilos e fontes só da própria origem, chamadas só para a API.
@@ -28,6 +32,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     server: {
       port: 3000,
       open: true,

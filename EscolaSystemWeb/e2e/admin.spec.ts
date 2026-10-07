@@ -166,3 +166,22 @@ test('desativa e reativa a escola pela própria linha, com a confirmação', asy
   await expect(page.getByText(`${school.body.name} foi reativada.`)).toBeVisible();
   await expect(row.getByRole('button', { name: `Desativar ${school.body.name}` })).toBeVisible();
 });
+
+test('Configurações mostram a versão do build e editam o próprio nome', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.goto('/admin/settings');
+  await expect(page.getByText(/^EscolaSystem v\d+\.\d+\.\d+/)).toBeVisible();
+
+  const rename = async (name: string) => {
+    await page.getByLabel(/^Nome/).fill(name);
+    await page.getByRole('button', { name: 'Salvar perfil' }).click();
+    await expect(page.getByText('Perfil atualizado.')).toBeVisible();
+  };
+
+  const original = await page.getByLabel(/^Nome/).inputValue();
+  await rename(`${original} Teste`);
+  // Vem da API depois de recarregar, não só do formulário
+  await page.reload();
+  await expect(page.getByLabel(/^Nome/)).toHaveValue(`${original} Teste`);
+  await rename(original);
+});

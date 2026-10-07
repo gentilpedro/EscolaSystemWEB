@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/auth';
-import { authApi, API_BASE_URL } from '../../services/api';
+import { authApi, userApi, API_BASE_URL } from '../../services/api';
+import { RoleId } from '../../types';
 import { Alert, Button, NewPasswordField, PageHeader, Panel, ReadOnlyField, TextField, errorMessage } from '../../components/ui';
 import { passwordIssues } from '../../lib/password';
+import { emailError, minLengthError } from '../../lib/contact';
 import { SESSION_ROLE_LABEL } from '../../lib/school';
 
 const EMPTY_FORM = { current: '', newPassword: '', confirm: '' };
@@ -43,13 +45,7 @@ export const AdminSettings: React.FC = () => {
       <PageHeader title="Configurações" />
 
       <div className="max-w-3xl space-y-6">
-        <Panel title="Meu perfil" titleId="perfil">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <ReadOnlyField label="Nome">{user?.name}</ReadOnlyField>
-            <ReadOnlyField label="E-mail">{user?.email}</ReadOnlyField>
-            <ReadOnlyField label="Perfil">{user ? SESSION_ROLE_LABEL[user.role] ?? user.role : '—'}</ReadOnlyField>
-          </div>
-        </Panel>
+        <ProfilePanel />
 
         <Panel title="Trocar minha senha" titleId="senha">
           {pwStatus && (
@@ -97,7 +93,7 @@ export const AdminSettings: React.FC = () => {
         <Panel title="Informações do sistema" titleId="sistema" flush>
           <dl className="divide-y divide-rule text-[0.9375rem]">
             {[
-              ['Sistema', 'EscolaSystem v1.0'],
+              ['Sistema', `EscolaSystem v${__APP_VERSION__}`],
               ['API', API_BASE_URL],
               ['Ambiente', import.meta.env.MODE],
             ].map(([k, v]) => (
@@ -110,5 +106,85 @@ export const AdminSettings: React.FC = () => {
         </Panel>
       </div>
     </>
+  );
+};
+
+/** Nome e e-mail editáveis; o perfil só outro administrador muda (em Usuários). */
+const ProfilePanel: React.FC = () => {
+  const { user, refreshUser } = useAuth();
+  const [form, setForm] = useState({ name: user?.name ?? '', email: user?.email ?? '' });
+  const [touched, setTouched] = useState(false);
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const errors = { name: minLengthError(form.name, 2, 'O nome'), email: emailError(form.email) };
+  const changed = form.name.trim() !== user?.name || form.email.trim() !== user?.email;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setTouched(true);
+    if (errors.name || errors.email) {
+      setStatus({ type: 'error', msg: 'Corrija os campos destacados.' });
+      return;
+    }
+    setSaving(true);
+    setStatus(null);
+    try {
+      // O PUT de usuários troca tudo: perfil, escola e telefone vão como estão para não mudar
+      await userApi.update(user.id, {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        roleId: RoleId.ADMIN,
+        schoolId: user.schoolId ?? null,
+        isActive: true,
+        phone: user.phone ?? null,
+      });
+      await refreshUser();
+      setStatus({ type: 'success', msg: 'Perfil atualizado.' });
+    } catch (err) {
+      setStatus({ type: 'error', msg: errorMessage(err, 'Erro ao salvar o perfil.') });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Panel title="Meu perfil" titleId="perfil">
+      {status && (
+        <Alert tone={status.type} className="mb-4">
+          {status.msg}
+        </Alert>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Nome"
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            onBlur={() => setTouched(true)}
+            error={touched ? errors.name : undefined}
+            autoComplete="name"
+            maxLength={200}
+            required
+          />
+          <TextField
+            label="E-mail"
+            type="email"
+            value={form.email}
+            onChange={e => setForm({ ...form, email: e.target.value })}
+            onBlur={() => setTouched(true)}
+            error={touched ? errors.email : undefined}
+            autoComplete="email"
+            maxLength={200}
+            required
+          />
+          <ReadOnlyField label="Perfil">{user ? SESSION_ROLE_LABEL[user.role] ?? user.role : '—'}</ReadOnlyField>
+        </div>
+        <Button type="submit" loading={saving} loadingLabel="Salvando…" disabled={!changed}>
+          Salvar perfil
+        </Button>
+      </form>
+    </Panel>
   );
 };
