@@ -186,6 +186,8 @@ export const userApi = {
   update: (id: string, data: UpdateUserPayload) => api.put<UserListItem>(`/users/${id}`, data),
   /** Desativa a conta (a API preserva o histórico) */
   delete: (id: string) => api.delete<void>(`/users/${id}`),
+  /** Desfaz o bloqueio por senha errada sem trocar a senha (admin) */
+  unlock: (id: string) => api.post<void>(`/users/${id}/unlock`),
   assignClass: (teacherId: string, classId: string) => api.post<void>(`/users/${teacherId}/assign-class/${classId}`),
   unassignClass: (teacherId: string, classId: string) => api.delete<void>(`/users/${teacherId}/assign-class/${classId}`),
   assignStudent: (parentId: string, studentId: string) => api.post<void>(`/users/${parentId}/assign-student/${studentId}`),

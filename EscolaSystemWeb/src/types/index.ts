@@ -54,6 +54,8 @@ export interface UserListItem {
   studentIds?: string[] | null;
   /** Escolas com vínculo ativo (professor, orientador e responsável podem estar em várias) */
   schools?: { id: string; name: string }[] | null;
+  /** Até quando a conta fica bloqueada por senha errada; null quando não está bloqueada */
+  lockedUntil?: string | null;
 }
 
 /** Filtros de GET /api/users; a API aplica todos dentro do escopo do perfil. */
@@ -63,6 +65,8 @@ export interface UserFilters {
   /** Trecho do nome ou do e-mail */
   search?: string;
   isActive?: boolean;
+  /** true: só quem está bloqueado agora por senha errada */
+  locked?: boolean;
 }
 
 export interface ClassItem {
@@ -198,6 +202,8 @@ export interface AdminStats {
   totalUsers: number;
   totalClasses: number;
   totalStudents: number;
+  /** Administradores e diretores bloqueados agora por senha errada */
+  lockedAccounts: number;
 }
 
 /* ---------- Contratos de escrita e de autenticação (OpenAPI da API: /openapi/v1.json) ---------- */
