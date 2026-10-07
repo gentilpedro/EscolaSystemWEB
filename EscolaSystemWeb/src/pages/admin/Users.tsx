@@ -56,7 +56,9 @@ export const AdminUsers: React.FC = () => {
   // Consulta (página + busca + perfil) cujo resultado está na tela; enquanto difere da atual, está carregando
   const [loadedQuery, setLoadedQuery] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams] = useSearchParams();
+  // Atalho do painel: ?busca= já filtra (ex.: a conta bloqueada a desbloquear)
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('busca') ?? '');
   // A busca vai para a API só depois de uma pausa na digitação
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -64,7 +66,6 @@ export const AdminUsers: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [page, setPage] = useState(1);
   // Atalho do painel: ?novo=diretor&escola=<id> abre o cadastro de diretor já com a escola
-  const [searchParams] = useSearchParams();
   const [showModal, setShowModal] = useState(() => searchParams.get('novo') === 'diretor');
   const [presetSchoolId] = useState(() => searchParams.get('escola') ?? '');
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
