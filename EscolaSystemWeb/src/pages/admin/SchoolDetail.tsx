@@ -122,6 +122,15 @@ export const AdminSchoolDetail: React.FC = () => {
               <dd className="break-all text-ink-2">{summary.director.email}</dd>
               <dt className="sr-only">Telefone</dt>
               <dd className="figures text-ink-2">{summary.director.phone || 'Sem telefone cadastrado'}</dd>
+              <dd className="pt-2">
+                {/* Senha, bloqueio, aparelhos e edição do diretor ficam em Usuários */}
+                <Link
+                  to={`/admin/users?busca=${encodeURIComponent(summary.director.email)}`}
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-lousa hover:underline sm:min-h-0"
+                >
+                  Ver em Usuários<span className="sr-only"> ({summary.director.name})</span>
+                </Link>
+              </dd>
             </dl>
           ) : (
             <div className="space-y-3">
