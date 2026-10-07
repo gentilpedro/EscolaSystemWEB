@@ -164,6 +164,9 @@ type Paged<T> = Promise<PagedResult<T>>;
 export const authApi = {
   login: (email: string, password: string) => api.post<AuthResponse>('/auth/login', { email, password }),
   logout: () => api.post<void>('/auth/logout'),
+  /** Troca a própria senha; exige a senha atual e mantém só a sessão atual */
+  changePassword: (currentPassword: string, newPassword: string) => api.post<void>('/auth/change-password', { currentPassword, newPassword }),
+  /** Redefine a senha de outra pessoa (admin, ou diretor para a própria escola) */
   resetPassword: (email: string, newPassword: string) => api.post<void>('/auth/reset-password', { email, newPassword }),
   me: () => api.get<ApiSessionUser>('/auth/me'),
 };

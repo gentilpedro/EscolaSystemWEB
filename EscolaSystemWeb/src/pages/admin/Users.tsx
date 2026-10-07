@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import { KeyRound, Plus, Pencil, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import type { UserListItem, PagedResult, School } from '../../types';
 import { ROLES, RoleId } from '../../types';
-import { userApi, schoolApi } from '../../services/api';
+import { authApi, userApi, schoolApi } from '../../services/api';
+import { useAuth } from '../../contexts/auth';
 import {
   ActiveStamp,
   Alert,
@@ -47,6 +48,7 @@ const PLATFORM_ROLES = ROLES.filter(r => r.id === RoleId.ADMIN || r.id === RoleI
 const MULTI_SCHOOL_ROLES: number[] = [RoleId.TEACHER, RoleId.ORIENTADOR, RoleId.PARENT];
 
 export const AdminUsers: React.FC = () => {
+  const { user: sessionUser } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [pagedData, setPagedData] = useState<PagedResult<UserListItem> | null>(null);
@@ -60,6 +62,7 @@ export const AdminUsers: React.FC = () => {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [resettingUser, setResettingUser] = useState<UserListItem | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -256,6 +259,10 @@ export const AdminUsers: React.FC = () => {
                           {!user.isActive && (
                             <IconButton label={`Ativar ${user.name}`} icon={<UserCheck className="h-5 w-5" />} onClick={() => handleToggleActive(user)} />
                           )}
+                          {/* A própria senha é trocada em Configurações, com a senha atual */}
+                          {user.isActive && user.id !== sessionUser?.id && (
+                            <IconButton label={`Redefinir senha de ${user.name}`} icon={<KeyRound className="h-5 w-5" />} onClick={() => setResettingUser(user)} />
+                          )}
                           <IconButton
                             label={`Editar ${user.name}`}
                             icon={<Pencil className="h-5 w-5" />}
@@ -275,6 +282,16 @@ export const AdminUsers: React.FC = () => {
         </>
       )}
 
+      {resettingUser && (
+        <ResetPasswordModal
+          user={resettingUser}
+          onClose={() => setResettingUser(null)}
+          onSaved={() => {
+            toast.success(`Senha de ${resettingUser.name} redefinida. As sessões abertas dessa conta foram encerradas.`);
+            setResettingUser(null);
+          }}
+        />
+      )}
       {showModal && (
         <UserModal
           user={editingUser}
@@ -411,6 +428,65 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
       )}
 
       {user && <CheckboxField label="Usuário ativo" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />}
+    </FormDialog>
+  );
+};
+
+/** Senha nova para outra pessoa: o nome e o e-mail ficam à vista, para não redefinir a conta errada. */
+const ResetPasswordModal: React.FC<{ user: UserListItem; onClose: () => void; onSaved: () => void }> = ({ user, onClose, onSaved }) => {
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mismatch = confirmation !== '' && password !== confirmation;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmation) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+    if (passwordIssues(password).length > 0) {
+      setError('A senha não atende à regra: veja o que falta abaixo do campo.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await authApi.resetPassword(user.email, password);
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao redefinir a senha.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <FormDialog
+      title="Redefinir senha"
+      description="A pessoa entra com a senha nova; as sessões abertas dela são encerradas."
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      saving={saving}
+      submitLabel="Redefinir senha"
+      size="sm"
+    >
+      {error && <Alert tone="error">{error}</Alert>}
+      <ReadOnlyField label="Conta">
+        {user.name}
+        <span className="block break-all text-[0.8125rem] text-ink-3">{user.email}</span>
+      </ReadOnlyField>
+      <NewPasswordField label="Nova senha" value={password} onChange={setPassword} />
+      <TextField
+        label="Confirmar nova senha"
+        type="password"
+        autoComplete="new-password"
+        value={confirmation}
+        onChange={e => setConfirmation(e.target.value)}
+        error={mismatch ? 'As senhas não coincidem.' : undefined}
+        required
+      />
     </FormDialog>
   );
 };
