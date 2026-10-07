@@ -17,6 +17,8 @@ import { AdminSchools } from './pages/admin/Schools';
 import { AdminUsers } from './pages/admin/Users';
 import { AdminSettings } from './pages/admin/Settings';
 import { AdminActivity } from './pages/admin/Activity';
+import { TicketsPage } from './features/tickets/TicketsPage';
+import { TicketDetailPage } from './features/tickets/TicketDetailPage';
 
 // Director Pages
 import { DirectorDashboard } from './pages/director/Dashboard';
@@ -87,6 +89,24 @@ function PrivateLayout() {
           />
 
           <Route
+            path="/admin/tickets"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                <TicketsPage audience="admin" />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/tickets/:id"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                <TicketDetailPage audience="admin" />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/admin/activity"
             element={
               <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
@@ -150,6 +170,24 @@ function PrivateLayout() {
             element={
               <ProtectedRoute allowedRoles={[UserRole.DIRECTOR]}>
                 <DirectorDisciplinary />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/director/support"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.DIRECTOR]}>
+                <TicketsPage audience="director" />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/director/support/:id"
+            element={
+              <ProtectedRoute allowedRoles={[UserRole.DIRECTOR]}>
+                <TicketDetailPage audience="director" />
               </ProtectedRoute>
             }
           />

@@ -221,6 +221,71 @@ export interface AuditLogItem {
   details?: string | null;
 }
 
+/* ---------- Tickets da escola para a administração ---------- */
+
+export const TicketType = {
+  BUG: 1,
+  IMPROVEMENT: 2,
+  QUESTION: 3,
+  OTHER: 4,
+} as const;
+
+export type TicketType = (typeof TicketType)[keyof typeof TicketType];
+
+export const TicketStatus = {
+  OPEN: 1,
+  IN_PROGRESS: 2,
+  RESOLVED: 3,
+  CLOSED: 4,
+} as const;
+
+export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+
+export interface TicketListItem {
+  id: string;
+  title: string;
+  type: TicketType;
+  typeName: string;
+  status: TicketStatus;
+  statusName: string;
+  schoolId: string;
+  schoolName: string;
+  openedByName: string;
+  createdAt: string;
+  lastActivityAt: string;
+  messageCount: number;
+}
+
+export interface TicketMessage {
+  id: string;
+  authorName: string;
+  /** Resposta da administração do sistema (as demais são da direção) */
+  fromAdministration: boolean;
+  body: string;
+  createdAt: string;
+}
+
+export interface TicketDetail extends Omit<TicketListItem, 'messageCount'> {
+  description: string;
+  messages: TicketMessage[];
+}
+
+/** Tickets abertos ou em andamento, por tipo e por situação */
+export interface TicketSummary {
+  bugs: number;
+  improvements: number;
+  questions: number;
+  others: number;
+  open: number;
+  inProgress: number;
+}
+
+export interface TicketFilters {
+  status?: TicketStatus;
+  type?: TicketType;
+  schoolId?: string;
+}
+
 export interface AdminStats {
   totalSchools: number;
   activeSchools: number;

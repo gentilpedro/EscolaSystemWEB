@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, School as SchoolIcon } from 'lucide-react';
-import type { AdminStats, School, UserListItem } from '../../types';
+import type { AdminStats, School, TicketSummary, UserListItem } from '../../types';
 import { RoleId } from '../../types';
-import { dashboardApi, schoolApi, userApi } from '../../services/api';
+import { dashboardApi, schoolApi, ticketApi, userApi } from '../../services/api';
 import { ActiveStamp, EmptyState, LoadError, PageLoader, Panel, TaskList } from '../../components/ui';
 import { formatDate, plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
@@ -21,6 +21,8 @@ export const AdminDashboard: React.FC = () => {
   const [attention, setAttention] = useState<Attention | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsFailed, setStatsFailed] = useState(false);
+  const [tickets, setTickets] = useState<TicketSummary | null>(null);
+  const [ticketsFailed, setTicketsFailed] = useState(false);
   const [schoolsFailed, setSchoolsFailed] = useState(false);
 
   const fetchData = useCallback(() => {
@@ -28,8 +30,12 @@ export const AdminDashboard: React.FC = () => {
       dashboardApi.adminStats(),
       listAll<School>((page, size) => schoolApi.list(page, size)),
       listAll<UserListItem>((page, size) => userApi.list(page, size, { roleId: RoleId.DIRECTOR, isActive: true })),
+      ticketApi.summary(),
     ])
-      .then(([statsResult, schoolsResult, directorsResult]) => {
+      .then(([statsResult, schoolsResult, directorsResult, ticketsResult]) => {
+        setTicketsFailed(ticketsResult.status === 'rejected');
+        if (ticketsResult.status === 'fulfilled') setTickets(ticketsResult.value);
+
         setStatsFailed(statsResult.status === 'rejected');
         if (statsResult.status === 'fulfilled') setStats(statsResult.value);
 
@@ -117,6 +123,8 @@ export const AdminDashboard: React.FC = () => {
         </Panel>
 
         <div className="space-y-6">
+          <TicketsPanel summary={tickets} failed={ticketsFailed} onRetry={retry} />
+
           <Panel title="Cadastros da rede" titleId="cadastros" flush>
             <TaskList
               items={[
@@ -160,6 +168,55 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </DashboardColumns>
     </>
+  );
+};
+
+/** Tickets que a direção das escolas abriu e ainda pedem a administração, por tipo */
+const TicketsPanel: React.FC<{ summary: TicketSummary | null; failed: boolean; onRetry: () => void }> = ({ summary, failed, onRetry }) => {
+  const pending = summary ? summary.open + summary.inProgress : 0;
+  return (
+    <Panel
+      title={pending > 0 ? `Tickets pendentes (${pending})` : 'Tickets pendentes'}
+      titleId="tickets"
+      flush
+      action={
+        <Link to="/admin/tickets" className="inline-flex min-h-11 items-center text-sm font-semibold text-lousa hover:underline sm:min-h-0">
+          Ver tickets
+        </Link>
+      }
+    >
+      {failed || !summary ? (
+        <LoadError message="Não foi possível carregar os tickets." onRetry={onRetry} className="m-5" />
+      ) : pending === 0 ? (
+        <EmptyState icon={CheckCircle2} title="Nenhum ticket pendente" compact>
+          Bugs e pedidos da direção das escolas aparecem aqui.
+        </EmptyState>
+      ) : (
+        <div className="px-5 py-4">
+          <dl className="grid grid-cols-2 gap-3">
+            {(
+              [
+                ['Bugs', summary.bugs],
+                ['Melhorias', summary.improvements],
+                ['Dúvidas', summary.questions],
+                ['Outros', summary.others],
+              ] as const
+            ).map(([label, count]) => (
+              <div key={label} className="rounded-md border border-rule px-3 py-2">
+                <dt className="text-sm text-ink-3">{label}</dt>
+                <dd className="figures text-xl font-semibold text-ink">{count}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-sm text-ink-3">
+            <Link to="/admin/tickets?situacao=1" className="font-semibold text-lousa hover:underline">
+              {plural(summary.open, 'aberto', 'abertos')}
+            </Link>{' '}
+            esperando resposta · {plural(summary.inProgress, 'em andamento', 'em andamento')}
+          </p>
+        </div>
+      )}
+    </Panel>
   );
 };
 

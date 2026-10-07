@@ -23,6 +23,12 @@ import type {
   SchoolPayload,
   SessionItem,
   AuditLogItem,
+  TicketDetail,
+  TicketFilters,
+  TicketListItem,
+  TicketStatus,
+  TicketSummary,
+  TicketType,
   StudentItem,
   StudentPayload,
   UpdateAttendancePayload,
@@ -190,6 +196,19 @@ export const auditApi = {
   /** Registro de atividades do admin; from e to em ISO, to exclusivo */
   list: (page = 1, pageSize = 25, filters: { action?: string; from?: string; to?: string } = {}): Paged<AuditLogItem> =>
     api.get('/audit', { params: { page, pageSize, ...filters } }),
+};
+
+export const ticketApi = {
+  /** Direção: os da própria escola; admin: todos */
+  list: (page = 1, pageSize = 20, filters: TicketFilters = {}): Paged<TicketListItem> =>
+    api.get('/tickets', { params: { page, pageSize, ...filters } }),
+  get: (id: string) => api.get<TicketDetail>(`/tickets/${id}`),
+  /** Só a direção abre */
+  create: (data: { type: TicketType; title: string; description: string }) => api.post<TicketDetail>('/tickets', data),
+  reply: (id: string, body: string) => api.post<TicketDetail>(`/tickets/${id}/messages`, { body }),
+  /** Só o admin muda a situação */
+  setStatus: (id: string, status: TicketStatus) => api.put<TicketDetail>(`/tickets/${id}/status`, { status }),
+  summary: () => api.get<TicketSummary>('/tickets/summary'),
 };
 
 export const userApi = {
