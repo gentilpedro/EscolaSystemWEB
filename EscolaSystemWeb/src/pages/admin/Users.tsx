@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { KeyRound, Plus, Pencil, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import type { UserListItem, PagedResult, School } from '../../types';
 import { ROLES, RoleId } from '../../types';
@@ -60,7 +61,10 @@ export const AdminUsers: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [showModal, setShowModal] = useState(false);
+  // Atalho do painel: ?novo=diretor&escola=<id> abre o cadastro de diretor já com a escola
+  const [searchParams] = useSearchParams();
+  const [showModal, setShowModal] = useState(() => searchParams.get('novo') === 'diretor');
+  const [presetSchoolId] = useState(() => searchParams.get('escola') ?? '');
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [resettingUser, setResettingUser] = useState<UserListItem | null>(null);
 
@@ -298,6 +302,7 @@ export const AdminUsers: React.FC = () => {
         <UserModal
           user={editingUser}
           isSelf={editingUser !== null && editingUser.id === sessionUser?.id}
+          initialSchoolId={editingUser ? undefined : presetSchoolId}
           onClose={() => setShowModal(false)}
           onSave={() => {
             toast.success(editingUser ? 'Usuário atualizado.' : 'Usuário criado.');
@@ -314,11 +319,13 @@ interface UserModalProps {
   user: UserListItem | null;
   /** Editando a própria conta: perfil e situação não mudam por aqui */
   isSelf?: boolean;
+  /** Escola já escolhida no cadastro (atalho "Cadastrar diretor" do painel) */
+  initialSchoolId?: string;
   onClose: () => void;
   onSave: () => void;
 }
 
-const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, onClose, onSave }) => {
+const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, initialSchoolId, onClose, onSave }) => {
   const currentRole = ROLES.find(r => r.name === user?.role);
   // Na edição, o perfil atual continua na lista mesmo que seja da escola (a API não troca para perfil da escola)
   const roleOptions = currentRole && !PLATFORM_ROLES.includes(currentRole) ? [...PLATFORM_ROLES, currentRole] : PLATFORM_ROLES;
@@ -329,7 +336,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, onClose, on
     email: user?.email ?? '',
     password: '',
     roleId: currentRole?.id ?? RoleId.DIRECTOR,
-    schoolId: user?.schoolId ?? '',
+    schoolId: user?.schoolId ?? initialSchoolId ?? '',
     isActive: user?.isActive ?? true,
   });
   const [schools, setSchools] = useState<School[]>([]);

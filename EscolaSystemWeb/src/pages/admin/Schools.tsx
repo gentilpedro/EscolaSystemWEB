@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
 import { schoolApi, userApi } from '../../services/api';
@@ -38,8 +39,10 @@ export const AdminSchools: React.FC = () => {
   const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  // Atalhos do painel: ?nova=1 abre o cadastro; ?busca= já filtra
+  const [searchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('busca') ?? '');
+  const [showModal, setShowModal] = useState(() => searchParams.get('nova') === '1');
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
 
   const fetchSchools = useCallback(async () => {
