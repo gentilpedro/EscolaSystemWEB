@@ -292,3 +292,15 @@ test('Atividades mostram quem fez o quê, com filtro por ação e período', asy
   await page.getByLabel('Até').fill(iso);
   await expect(list.getByText(school.body.name)).toHaveCount(0);
 });
+
+test('escolas viram cartões no celular, com as ações', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto(`/admin/schools?busca=${encodeURIComponent('Jardim das Flores')}`);
+  await expect(page.getByRole('table', { name: 'Escolas cadastradas' })).toBeHidden();
+  const card = page.getByRole('list', { name: 'Escolas cadastradas' }).getByRole('listitem').first();
+  await expect(card).toContainText('Escola Estadual Jardim das Flores');
+  await expect(card).toContainText('(51) 3333-1200');
+  await expect(card.getByRole('button', { name: /^Editar / })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

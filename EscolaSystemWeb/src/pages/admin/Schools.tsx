@@ -94,6 +94,37 @@ export const AdminSchools: React.FC = () => {
 
   const filteredSchools = schools.filter(s => matches(searchTerm, s.name, s.email));
 
+  const actionsFor = (school: School) => (
+    <RowActions
+      destructive={
+        <>
+          {school.isActive && (
+            <IconButton tone="danger" label={`Desativar ${school.name}`} icon={<PowerOff className="h-5 w-5" />} onClick={() => handleToggleActive(school)} />
+          )}
+          <IconButton tone="danger" label={`Excluir ${school.name}`} icon={<Trash2 className="h-5 w-5" />} onClick={() => handleDelete(school)} />
+        </>
+      }
+    >
+      {!school.isActive && (
+        <IconButton label={`Reativar ${school.name}`} icon={<Power className="h-5 w-5" />} onClick={() => handleToggleActive(school)} />
+      )}
+      <IconButton
+        label={`Editar ${school.name}`}
+        icon={<Pencil className="h-5 w-5" />}
+        onClick={() => {
+          setEditingSchool(school);
+          setShowModal(true);
+        }}
+      />
+    </RowActions>
+  );
+
+  const empty = (
+    <EmptyState icon={SchoolIcon} title={schools.length === 0 ? 'Nenhuma escola cadastrada' : 'Nenhuma escola encontrada'} compact>
+      {schools.length === 0 ? 'Use “Nova escola” para cadastrar a primeira.' : 'Ajuste a busca.'}
+    </EmptyState>
+  );
+
   const header = (
     <PageHeader
       title="Escolas"
@@ -125,7 +156,30 @@ export const AdminSchools: React.FC = () => {
             <SearchInput label="Pesquisar escolas" value={searchTerm} onChange={setSearchTerm} placeholder="Pesquisar por nome ou e-mail…" />
           </FilterBar>
 
-          <TableFrame caption="Escolas cadastradas" minWidth="52rem">
+          {/* Celular: um cartão por escola, sem rolar para o lado */}
+          <div className="md:hidden">
+            {filteredSchools.length === 0 ? (
+              <div className="rounded-lg border border-rule bg-surface">{empty}</div>
+            ) : (
+              <ul className="space-y-3" aria-label="Escolas cadastradas">
+                {filteredSchools.map(school => (
+                  <li key={school.id} className="rounded-lg border border-rule bg-surface px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 font-semibold text-ink">{school.name}</p>
+                      <ActiveStamp active={school.isActive} feminine />
+                    </div>
+                    <p className="mt-1 break-all text-sm text-ink-3">{school.email}</p>
+                    <p className="text-sm text-ink-3">
+                      <span className="figures">{school.phone}</span> · {school.address}
+                    </p>
+                    <div className="mt-2 border-t border-rule pt-2">{actionsFor(school)}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <TableFrame caption="Escolas cadastradas" minWidth="52rem" className="hidden md:block">
             <THead>
               <Th sticky>Nome</Th>
               <Th>E-mail</Th>
@@ -138,11 +192,7 @@ export const AdminSchools: React.FC = () => {
             </THead>
             <TBody>
               {filteredSchools.length === 0 ? (
-                <TableEmptyRow colSpan={6}>
-                  <EmptyState icon={SchoolIcon} title={schools.length === 0 ? 'Nenhuma escola cadastrada' : 'Nenhuma escola encontrada'} compact>
-                    {schools.length === 0 ? 'Use “Nova escola” para cadastrar a primeira.' : 'Ajuste a busca.'}
-                  </EmptyState>
-                </TableEmptyRow>
+                <TableEmptyRow colSpan={6}>{empty}</TableEmptyRow>
               ) : (
                 filteredSchools.map(school => (
                   <Tr key={school.id}>
@@ -157,40 +207,7 @@ export const AdminSchools: React.FC = () => {
                     <Td>
                       <ActiveStamp active={school.isActive} feminine />
                     </Td>
-                    <Td align="right">
-                      <RowActions
-                        destructive={
-                          <>
-                            {school.isActive && (
-                              <IconButton
-                                tone="danger"
-                                label={`Desativar ${school.name}`}
-                                icon={<PowerOff className="h-5 w-5" />}
-                                onClick={() => handleToggleActive(school)}
-                              />
-                            )}
-                            <IconButton
-                              tone="danger"
-                              label={`Excluir ${school.name}`}
-                              icon={<Trash2 className="h-5 w-5" />}
-                              onClick={() => handleDelete(school)}
-                            />
-                          </>
-                        }
-                      >
-                        {!school.isActive && (
-                          <IconButton label={`Reativar ${school.name}`} icon={<Power className="h-5 w-5" />} onClick={() => handleToggleActive(school)} />
-                        )}
-                        <IconButton
-                          label={`Editar ${school.name}`}
-                          icon={<Pencil className="h-5 w-5" />}
-                          onClick={() => {
-                            setEditingSchool(school);
-                            setShowModal(true);
-                          }}
-                        />
-                      </RowActions>
-                    </Td>
+                    <Td align="right">{actionsFor(school)}</Td>
                   </Tr>
                 ))
               )}
