@@ -131,3 +131,8 @@
 .on-lousa :focus-visible {
   outline-color: var(--color-chalk);
 }
+
+/* O título da tela recebe o foco ao navegar, só para o leitor de tela anunciar: sem contorno */
+h1[tabindex='-1']:focus {
+  outline: none;
+}
