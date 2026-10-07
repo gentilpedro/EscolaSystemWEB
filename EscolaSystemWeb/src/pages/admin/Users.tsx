@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, KeyRound, Plus, Pencil, Unlock, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
+import { Download, KeyRound, MonitorOff, Plus, Pencil, Unlock, UserCheck, UserX, Users as UsersIcon } from 'lucide-react';
 import type { UserListItem, PagedResult, School } from '../../types';
 import { ROLES, RoleId } from '../../types';
 import { authApi, userApi, schoolApi } from '../../services/api';
@@ -179,6 +179,23 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
+  const handleDisconnect = async (user: UserListItem) => {
+    const ok = await confirm({
+      title: `Desconectar ${user.name} de todos os aparelhos?`,
+      description: user.email,
+      consequence: 'Todos os aparelhos dessa conta voltam para a tela de login. A senha não muda: para entrar de novo, basta a mesma senha.',
+      confirmLabel: 'Desconectar',
+      reversible: true,
+    });
+    if (!ok) return;
+    try {
+      await userApi.revokeSessions(user.id);
+      toast.success(`${user.name} foi desconectado de todos os aparelhos.`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao desconectar.'));
+    }
+  };
+
   const handleUnlock = async (user: UserListItem) => {
     const ok = await confirm({
       title: `Desbloquear ${user.name}?`,
@@ -220,6 +237,14 @@ export const AdminUsers: React.FC = () => {
       {/* A própria senha é trocada em Configurações, com a senha atual */}
       {user.isActive && user.id !== sessionUser?.id && (
         <IconButton label={`Redefinir senha de ${user.name}`} icon={<KeyRound className="h-5 w-5" />} onClick={() => setResettingUser(user)} />
+      )}
+      {/* Aparelho perdido: tira o acesso de todos sem trocar a senha. A própria conta usa Configurações */}
+      {user.isActive && user.id !== sessionUser?.id && (
+        <IconButton
+          label={`Desconectar ${user.name} de todos os aparelhos`}
+          icon={<MonitorOff className="h-5 w-5" />}
+          onClick={() => handleDisconnect(user)}
+        />
       )}
       <IconButton
         label={`Editar ${user.name}`}

@@ -390,3 +390,25 @@ test('painel aponta escola com diretor e sem turmas como implantação incomplet
   await expect(page).toHaveURL(new RegExp(`/admin/schools/${school.body.id}$`));
   await expect(page.getByText('a implantação não começou', { exact: false })).toBeVisible();
 });
+
+test('admin desconecta um diretor de todos os aparelhos sem trocar a senha', async ({ page }) => {
+  const director = ACCOUNTS.director;
+  const directorToken = await apiToken(director.email, director.password);
+  const meStatus = async (token: string) =>
+    (await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })).status;
+  expect(await meStatus(directorToken)).toBe(200);
+
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/users?busca=${encodeURIComponent(director.email)}`);
+  const row = page.getByRole('row', { name: new RegExp(director.email) });
+  await row.getByRole('button', { name: /^Desconectar .* de todos os aparelhos$/ }).click();
+  await openDialog(page).getByRole('button', { name: 'Desconectar' }).click();
+  await expect(page.getByText(/foi desconectado de todos os aparelhos\.$/)).toBeVisible();
+
+  expect(await meStatus(directorToken)).toBe(401);
+  // A senha continua a mesma
+  expect(await apiTokenStatus(director.email, director.password)).toBe(200);
+  // Na própria linha do admin a ação não aparece
+  await page.goto(`/admin/users?busca=${encodeURIComponent(ACCOUNTS.admin.email)}`);
+  await expect(page.getByRole('row', { name: new RegExp(ACCOUNTS.admin.email) }).getByRole('button', { name: /^Desconectar/ })).toHaveCount(0);
+});
