@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   ListTodo,
   History,
+  LifeBuoy,
 } from 'lucide-react';
 import type React from 'react';
 import { UserRole } from '../../types';
@@ -31,6 +32,7 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Painel', href: '/admin', icon: LayoutDashboard, end: true },
     { label: 'Escolas', href: '/admin/schools', icon: School },
     { label: 'Usuários', href: '/admin/users', icon: Users },
+    { label: 'Tickets', href: '/admin/tickets', icon: LifeBuoy },
     { label: 'Atividades', href: '/admin/activity', icon: History },
     { label: 'Configurações', href: '/admin/settings', icon: Settings },
   ],
@@ -41,6 +43,7 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { label: 'Alunos', href: '/director/students', icon: GraduationCap },
     { label: 'Relatórios', href: '/director/reports', icon: BarChart3 },
     { label: 'Chamados', href: '/director/disciplinary', icon: ClipboardList },
+    { label: 'Suporte', href: '/director/support', icon: LifeBuoy },
   ],
   [UserRole.TEACHER]: [
     { label: 'Painel', href: '/teacher', icon: LayoutDashboard, end: true },
