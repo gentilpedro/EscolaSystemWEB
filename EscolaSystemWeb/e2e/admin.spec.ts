@@ -304,3 +304,20 @@ test('escolas viram cartões no celular, com as ações', async ({ page }) => {
   await expect(card.getByRole('button', { name: /^Editar / })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('exporta administradores e diretores para planilha, sem CPF', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.goto('/admin/users');
+  await page.getByLabel('Filtrar por perfil').selectOption({ label: 'Diretor' });
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Exportar' }).click()]);
+
+  expect(download.suggestedFilename()).toMatch(/^administradores-e-diretores-\d{4}-\d{2}-\d{2}\.csv$/);
+  const csv = await (await import('node:fs/promises')).readFile(await download.path(), 'utf-8');
+  const [header, ...rows] = csv.replace(/^\uFEFF/, '').split('\r\n');
+  expect(header).toBe('Nome;E-mail;Perfil;Escola;Situação;Bloqueada até;Último acesso');
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.every(r => r.split(';')[2] === 'Diretor')).toBe(true);
+  expect(rows.some(r => r.includes('diretora@escolademo.com.br'))).toBe(true);
+  expect(csv).not.toMatch(/CPF/i);
+  await expect(page.getByText(/contas? exportadas?\.$/)).toBeVisible();
+});
