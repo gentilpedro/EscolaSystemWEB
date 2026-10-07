@@ -371,3 +371,22 @@ test('página da escola mostra a direção e os números, sem dados da equipe', 
   await page.getByRole('link', { name: 'Cadastrar diretor' }).click();
   await expect(openDialog(page).getByLabel('Escola')).toHaveValue(school.body.id);
 });
+
+test('painel aponta escola com diretor e sem turmas como implantação incompleta', async ({ page }) => {
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  // "AAA" no começo: a lista do grupo mostra só as 5 primeiras em ordem alfabética
+  const school = await apiPost<{ id: string; name: string }>(admin, '/schools', {
+    name: `AAA Implantação ${suffix}`, address: 'Rua G, 70', phone: '(51) 3333-2222', email: `implantacao.${suffix}@escola.com.br`,
+  });
+  await apiPost(admin, '/users', {
+    name: `Diretor Implantação ${suffix}`, email: `dir.implantacao.${suffix}@escola.com.br`, password: 'Senha@123', roleId: 2, schoolId: school.body.id,
+  });
+
+  await loginAs(page, 'admin');
+  const group = page.getByRole('region', { name: 'Implantação incompleta' });
+  await expect(group).toContainText(`${school.body.name} · sem turmas`);
+  await group.getByRole('link', { name: `Ver escola ${school.body.name} · sem turmas` }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/schools/${school.body.id}$`));
+  await expect(page.getByText('a implantação não começou', { exact: false })).toBeVisible();
+});

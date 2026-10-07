@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, School as SchoolIcon } from 'lucide-react';
-import type { AdminStats, School, TicketSummary, UserListItem } from '../../types';
+import type { AdminStats, School, SchoolOverview, TicketSummary, UserListItem } from '../../types';
 import { RoleId } from '../../types';
-import { dashboardApi, schoolApi, ticketApi, userApi } from '../../services/api';
+import { adminSchoolsApi, dashboardApi, schoolApi, ticketApi, userApi } from '../../services/api';
 import { ActiveStamp, EmptyState, LoadError, PageLoader, Panel, TaskList } from '../../components/ui';
 import { formatDate, formatTime, plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
@@ -31,6 +31,8 @@ export const AdminDashboard: React.FC = () => {
   const [ticketsFailed, setTicketsFailed] = useState(false);
   // Administradores e diretores bloqueados agora por senha errada
   const [locked, setLocked] = useState<UserListItem[]>([]);
+  // Escolas ativas com diretor e ainda sem turmas ou sem alunos: a implantação não começou
+  const [notStarted, setNotStarted] = useState<SchoolOverview[]>([]);
   const [schoolsFailed, setSchoolsFailed] = useState(false);
 
   const fetchData = useCallback(() => {
@@ -40,8 +42,15 @@ export const AdminDashboard: React.FC = () => {
       listAll<UserListItem>((page, size) => userApi.list(page, size, { roleId: RoleId.DIRECTOR, isActive: true })),
       ticketApi.summary(),
       userApi.list(1, 50, { locked: true }),
+      adminSchoolsApi.overview(),
     ])
-      .then(([statsResult, schoolsResult, directorsResult, ticketsResult, lockedResult]) => {
+      .then(([statsResult, schoolsResult, directorsResult, ticketsResult, lockedResult, overviewResult]) => {
+        // Sem a visão geral, o grupo só não aparece
+        setNotStarted(
+          overviewResult.status === 'fulfilled'
+            ? overviewResult.value.filter(s => s.isActive && s.hasDirector && (s.activeClasses === 0 || s.activeStudents === 0))
+            : [],
+        );
         // Sem a lista de bloqueados, o grupo só não aparece
         setLocked(lockedResult.status === 'fulfilled' ? lockedResult.value.items : []);
 
@@ -86,7 +95,11 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  const pending = (attention ? attention.withoutDirector.length + attention.inactive.length : 0) + locked.length;
+  const pending = (attention ? attention.withoutDirector.length + attention.inactive.length : 0) + locked.length + notStarted.length;
+  const notStartedItems: AttentionItem[] = notStarted.map(s => ({
+    id: s.id,
+    name: `${s.name} · ${s.activeClasses === 0 ? 'sem turmas' : 'sem alunos'}`,
+  }));
   const lockedItems: Array<AttentionItem & { email: string }> = locked.map(u => ({
     id: u.id,
     name: u.lockedUntil ? `${u.name} · bloqueada até ${formatTime(new Date(u.lockedUntil))}` : u.name,
@@ -135,6 +148,14 @@ export const AdminDashboard: React.FC = () => {
                 items={attention.withoutDirector}
                 noun={['escola', 'escolas']}
                 action={school => ({ to: `/admin/users?novo=diretor&escola=${school.id}`, label: 'Cadastrar diretor' })}
+                more={{ to: '/admin/schools', label: 'Ver todas as escolas' }}
+              />
+              <AttentionGroup
+                title="Implantação incompleta"
+                explanation="Têm diretor, mas ainda não cadastraram turmas ou alunos: a escola ainda não usa o sistema."
+                items={notStartedItems}
+                noun={['escola', 'escolas']}
+                action={item => ({ to: `/admin/schools/${item.id}`, label: 'Ver escola' })}
                 more={{ to: '/admin/schools', label: 'Ver todas as escolas' }}
               />
               <AttentionGroup
