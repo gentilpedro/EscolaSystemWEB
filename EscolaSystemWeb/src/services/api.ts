@@ -229,6 +229,8 @@ export const userApi = {
   delete: (id: string) => api.delete<void>(`/users/${id}`),
   /** Desfaz o bloqueio por senha errada sem trocar a senha (admin) */
   unlock: (id: string) => api.post<void>(`/users/${id}/unlock`),
+  /** Desconecta de todos os aparelhos sem trocar a senha (admin; administradores e diretores) */
+  revokeSessions: (id: string) => api.delete<void>(`/users/${id}/sessions`),
   assignClass: (teacherId: string, classId: string) => api.post<void>(`/users/${teacherId}/assign-class/${classId}`),
   unassignClass: (teacherId: string, classId: string) => api.delete<void>(`/users/${teacherId}/assign-class/${classId}`),
   assignStudent: (parentId: string, studentId: string) => api.post<void>(`/users/${parentId}/assign-student/${studentId}`),
