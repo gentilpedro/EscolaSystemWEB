@@ -22,6 +22,7 @@ import type {
   School,
   SchoolPayload,
   SessionItem,
+  AuditLogItem,
   StudentItem,
   StudentPayload,
   UpdateAttendancePayload,
@@ -183,6 +184,12 @@ export const schoolApi = {
   create: (data: SchoolPayload) => api.post<School>('/schools', data),
   update: (id: string, data: SchoolPayload) => api.put<School>(`/schools/${id}`, data),
   delete: (id: string) => api.delete<void>(`/schools/${id}`),
+};
+
+export const auditApi = {
+  /** Registro de atividades do admin; from e to em ISO, to exclusivo */
+  list: (page = 1, pageSize = 25, filters: { action?: string; from?: string; to?: string } = {}): Paged<AuditLogItem> =>
+    api.get('/audit', { params: { page, pageSize, ...filters } }),
 };
 
 export const userApi = {

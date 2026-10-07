@@ -206,6 +206,21 @@ export interface SessionItem {
   isCurrent: boolean;
 }
 
+/** Linha do registro de atividades (GET /api/audit) */
+export interface AuditLogItem {
+  id: string;
+  createdAt: string;
+  actorId?: string | null;
+  actorName: string;
+  /** Código estável da ação, como "school.deactivated" (rótulos em lib/audit) */
+  action: string;
+  targetType: 'School' | 'User';
+  targetId: string;
+  targetName: string;
+  /** O que mudou, já em texto; nunca senha nem CPF */
+  details?: string | null;
+}
+
 export interface AdminStats {
   totalSchools: number;
   activeSchools: number;
