@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { RouteAnnouncer } from './components/RouteAnnouncer';
 
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/auth';
@@ -390,6 +391,7 @@ export default function App() {
     <Router>
       <AuthProvider>
         <NotificationsProvider>
+          <RouteAnnouncer />
           <AppRoutes />
         </NotificationsProvider>
       </AuthProvider>

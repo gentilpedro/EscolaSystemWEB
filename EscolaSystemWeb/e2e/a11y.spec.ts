@@ -76,6 +76,36 @@ test.describe('Acessibilidade do portal do admin (WCAG 2.1 AA)', () => {
     }
   });
 
+  test('cada tela tem o próprio título de aba e, ao navegar, o foco vai para o título da tela', async ({ page }) => {
+    // Depois do login (uma navegação), o painel já está com título e foco
+    await expect(page).toHaveTitle('Painel administrativo · EscolaSystem');
+    await expect(page.getByRole('heading', { level: 1, name: 'Painel administrativo' })).toBeFocused();
+
+    for (const [name, title] of [
+      ['Escolas', 'Escolas'],
+      ['Usuários', 'Usuários'],
+      ['Atividades', 'Atividades'],
+      ['Configurações', 'Configurações'],
+    ] as const) {
+      await page.getByRole('navigation').getByRole('link', { name, exact: true }).first().click();
+      await expect(page).toHaveTitle(`${title} · EscolaSystem`);
+      await expect(page.getByRole('heading', { level: 1, name: title })).toBeFocused();
+    }
+  });
+
+  test('tela de detalhe usa o próprio nome no título da aba', async ({ page }) => {
+    const director = await apiToken(ACCOUNTS.director.email, ACCOUNTS.director.password);
+    const ticket = await apiPost<{ id: string; title: string }>(director, '/tickets', {
+      type: 3,
+      title: 'Como cadastrar o calendário',
+      description: 'Onde fica o cadastro do calendário escolar?',
+    });
+    await page.goto('/admin/tickets');
+    await page.getByRole('link', { name: /Como cadastrar o calendário/ }).first().click();
+    await expect(page).toHaveTitle('Como cadastrar o calendário · EscolaSystem');
+    await expect(page.getByRole('heading', { level: 1, name: ticket.body.title })).toBeFocused();
+  });
+
   test('o teclado chega ao conteúdo pelo link de pular', async ({ page }) => {
     await page.goto('/admin/users');
     await page.keyboard.press('Tab');
