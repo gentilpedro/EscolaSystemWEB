@@ -44,9 +44,8 @@ import { passwordIssues } from '../../lib/password';
 
 const PAGE_SIZE = 15;
 
-/** O admin cadastra só os perfis da rede; os perfis da escola são criados pela direção. */
+/** O admin cuida do sistema: vê e gerencia só administradores e diretores. As pessoas das escolas ficam com a direção. */
 const PLATFORM_ROLES = ROLES.filter(r => r.id === RoleId.ADMIN || r.id === RoleId.DIRECTOR);
-const MULTI_SCHOOL_ROLES: number[] = [RoleId.TEACHER, RoleId.ORIENTADOR, RoleId.PARENT];
 
 export const AdminUsers: React.FC = () => {
   const { user: sessionUser } = useAuth();
@@ -186,7 +185,11 @@ export const AdminUsers: React.FC = () => {
     <>
       <PageHeader
         title="Usuários"
-        description={pagedData && !filtering ? `${pagedData.totalCount.toLocaleString('pt-BR')} usuários na rede` : undefined}
+        description={
+          pagedData && !filtering
+            ? `${plural(pagedData.totalCount, 'conta', 'contas')} de administração e direção. As pessoas de cada escola ficam com a direção dela.`
+            : undefined
+        }
         actions={
           <Button
             icon={<Plus className="h-4 w-4" aria-hidden="true" />}
@@ -211,7 +214,7 @@ export const AdminUsers: React.FC = () => {
               label="Pesquisar usuários"
               value={searchTerm}
               onChange={setSearchTerm}
-              placeholder="Pesquisar por nome ou e-mail em toda a rede…"
+              placeholder="Pesquisar administradores e diretores por nome ou e-mail…"
             />
             <FilterSelect
               label="Filtrar por perfil"
@@ -222,7 +225,7 @@ export const AdminUsers: React.FC = () => {
               }}
             >
               <option value="">Todos os perfis</option>
-              {ROLES.map(r => (
+              {PLATFORM_ROLES.map(r => (
                 <option key={r.id} value={r.id}>
                   {r.label}
                 </option>
@@ -249,7 +252,7 @@ export const AdminUsers: React.FC = () => {
 
           {filtering && pagedData && (
             <p className="-mt-3 mb-4 text-sm text-ink-3" aria-live="polite">
-              {loading ? 'Pesquisando em toda a rede…' : `${plural(pagedData.totalCount, 'usuário encontrado', 'usuários encontrados')} em toda a rede`}
+              {loading ? 'Pesquisando…' : plural(pagedData.totalCount, 'conta encontrada', 'contas encontradas')}
             </p>
           )}
 
@@ -366,10 +369,6 @@ interface UserModalProps {
 
 const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, initialSchoolId, onClose, onSave }) => {
   const currentRole = ROLES.find(r => r.name === user?.role);
-  // Na edição, o perfil atual continua na lista mesmo que seja da escola (a API não troca para perfil da escola)
-  const roleOptions = currentRole && !PLATFORM_ROLES.includes(currentRole) ? [...PLATFORM_ROLES, currentRole] : PLATFORM_ROLES;
-  // Professor, orientador e responsável podem estar em várias escolas: quem cuida disso é a direção de cada uma
-  const multiSchool = currentRole !== undefined && MULTI_SCHOOL_ROLES.includes(currentRole.id);
   const [formData, setFormData] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
@@ -451,7 +450,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, initialScho
         </ReadOnlyField>
       ) : (
         <SelectField label="Perfil" value={formData.roleId} onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })} required>
-          {roleOptions.map(r => (
+          {PLATFORM_ROLES.map(r => (
             <option key={r.id} value={r.id}>
               {r.label}
             </option>
@@ -459,12 +458,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, isSelf = false, initialScho
         </SelectField>
       )}
 
-      {multiSchool && formData.roleId === currentRole?.id ? (
-        <ReadOnlyField label={user?.schools && user.schools.length > 1 ? 'Escolas' : 'Escola'}>
-          {user?.schools?.map(sc => sc.name).join(', ') || user?.schoolName || '—'}
-          <span className="mt-1 block text-[0.8125rem] text-ink-3">A direção de cada escola adiciona ou remove esta pessoa.</span>
-        </ReadOnlyField>
-      ) : formData.roleId !== RoleId.ADMIN && (
+      {formData.roleId !== RoleId.ADMIN && (
         <SelectField
           label="Escola"
           value={formData.schoolId}

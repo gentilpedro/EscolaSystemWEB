@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Power, PowerOff, Trash2, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
-import { schoolApi, userApi } from '../../services/api';
+import { schoolApi } from '../../services/api';
 import {
   ActiveStamp,
   Alert,
@@ -218,7 +218,8 @@ export const AdminSchools: React.FC = () => {
 const confirmActivation = async (confirm: ReturnType<typeof useConfirm>, target: School, activate: boolean) => {
   let people: number | null = null;
   try {
-    people = (await userApi.list(1, 1, { schoolId: target.id, isActive: true })).totalCount;
+    // O admin não lista as pessoas da escola: a API manda só quantas têm conta ativa
+    people = (await schoolApi.get(target.id)).activeUsers ?? null;
   } catch {
     // Sem a contagem, a confirmação continua, só sem o número
   }

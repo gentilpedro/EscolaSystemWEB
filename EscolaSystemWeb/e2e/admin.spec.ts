@@ -11,12 +11,17 @@ test.describe('Administração', () => {
     await expect(page.getByRole('table', { name: 'Usuários' })).toBeVisible();
   });
 
-  test('busca de usuários é feita pela API', async ({ page }) => {
-    const search = page.waitForRequest(r => r.url().includes('/users?') && r.url().includes('search=orient'));
-    await page.getByLabel('Pesquisar usuários').fill('orient');
+  test('busca de usuários é feita pela API e traz só administradores e diretores', async ({ page }) => {
+    const search = page.waitForRequest(r => r.url().includes('/users?') && r.url().includes('search=diretora'));
+    await page.getByLabel('Pesquisar usuários').fill('diretora');
     await search;
-    await expect(page.getByText('1 usuário encontrado em toda a rede')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'orientacao@escolademo.com.br' })).toBeVisible();
+    await expect(page.getByText('1 conta encontrada')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'diretora@escolademo.com.br' })).toBeVisible();
+
+    // As pessoas da escola ficam com a direção: o admin não acha a orientadora
+    await page.getByLabel('Pesquisar usuários').fill('orientacao');
+    await expect(page.getByText('0 contas encontradas')).toBeVisible();
+    await expect(page.getByLabel('Filtrar por perfil').locator('option')).toHaveText(['Todos os perfis', 'Administrador', 'Diretor']);
   });
 
   test('a própria conta não tem desativar nem troca de perfil', async ({ page }) => {
@@ -193,7 +198,7 @@ test('usuários filtram por escola e viram cartões no celular', async ({ page }
   // Primeira escola de verdade da lista (a opção 0 é "Todas as escolas")
   const school = (await filter.locator('option').nth(1).textContent())!.replace(/ \(inativa\)$/, '');
   await filter.selectOption({ index: 1 });
-  await expect(page.getByText(/encontrados? em toda a rede/)).toBeVisible();
+  await expect(page.getByText(/contas? encontradas?/)).toBeVisible();
 
   const table = page.getByRole('table', { name: 'Usuários' });
   const rows = table.locator('tbody tr');

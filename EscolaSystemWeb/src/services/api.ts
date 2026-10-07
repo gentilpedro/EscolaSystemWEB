@@ -173,6 +173,7 @@ export const authApi = {
 
 export const schoolApi = {
   list: (page = 1, pageSize = 20): Paged<School> => api.get('/schools', { params: { page, pageSize } }),
+  get: (id: string) => api.get<School>(`/schools/${id}`),
   create: (data: SchoolPayload) => api.post<School>('/schools', data),
   update: (id: string, data: SchoolPayload) => api.put<School>(`/schools/${id}`, data),
   delete: (id: string) => api.delete<void>(`/schools/${id}`),
