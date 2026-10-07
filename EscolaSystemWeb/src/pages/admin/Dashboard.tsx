@@ -122,7 +122,7 @@ export const AdminDashboard: React.FC = () => {
               items={[
                 { to: '/admin/schools?nova=1', label: 'Nova escola', description: 'Nome, endereço, e-mail e telefone' },
                 { to: '/admin/users?novo=diretor', label: 'Novo diretor', description: 'A direção cadastra a equipe, as turmas e os alunos da escola' },
-                { to: '/admin/users', label: 'Usuários da rede', description: 'Buscar, editar, redefinir senha, desativar' },
+                { to: '/admin/users', label: 'Administradores e diretores', description: 'Buscar, editar, redefinir senha, desativar' },
               ]}
             />
           </Panel>

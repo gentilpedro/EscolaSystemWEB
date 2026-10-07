@@ -31,6 +31,8 @@ export interface School {
   phone: string;
   isActive: boolean;
   createdAt: string;
+  /** Pessoas com conta ativa na escola; a API manda só no detalhe e só para o admin */
+  activeUsers?: number;
 }
 
 export interface UserListItem {
