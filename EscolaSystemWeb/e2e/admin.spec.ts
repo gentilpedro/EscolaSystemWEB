@@ -321,3 +321,26 @@ test('exporta administradores e diretores para planilha, sem CPF', async ({ page
   expect(csv).not.toMatch(/CPF/i);
   await expect(page.getByText(/contas? exportadas?\.$/)).toBeVisible();
 });
+
+test('usuários mostram o último acesso e ordenam por quem está há mais tempo sem entrar', async ({ page }) => {
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  const school = await apiPost<{ id: string }>(admin, '/schools', {
+    name: `Escola Acesso ${suffix}`, address: 'Rua E, 50', phone: '(51) 3333-9999', email: `acesso.${suffix}@escola.com.br`,
+  });
+  const director = await apiPost<{ id: string; name: string }>(admin, '/users', {
+    name: `Diretor Nunca Entrou ${suffix}`, email: `nunca.${suffix}@escola.com.br`, password: 'Senha@123', roleId: 2, schoolId: school.body.id,
+  });
+  expect(director.status).toBe(201);
+
+  await loginAs(page, 'admin');
+  await page.goto('/admin/users');
+  const table = page.getByRole('table', { name: 'Usuários' });
+  await expect(table.getByRole('columnheader', { name: 'Último acesso' })).toBeVisible();
+  await expect(table.getByRole('row', { name: new RegExp(ACCOUNTS.admin.email) })).toContainText(/\d{2}\/\d{2}\/\d{4}/);
+
+  await page.getByLabel('Ordenar').selectOption('lastAccess');
+  // Quem nunca entrou vem antes de todos
+  await expect(table.locator('tbody tr').first()).toContainText('Nunca entrou');
+  await expect(table.getByRole('row', { name: new RegExp(director.body.name) })).toContainText('Nunca entrou');
+});

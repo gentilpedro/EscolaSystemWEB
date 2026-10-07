@@ -64,6 +64,7 @@ export const AdminUsers: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [schoolFilter, setSchoolFilter] = useState('');
+  const [sort, setSort] = useState<'' | 'lastAccess'>('');
   const [schools, setSchools] = useState<School[]>([]);
   const [page, setPage] = useState(1);
   // Atalho do painel: ?novo=diretor&escola=<id> abre o cadastro de diretor já com a escola
@@ -87,7 +88,7 @@ export const AdminUsers: React.FC = () => {
       .catch(() => setSchools([]));
   }, []);
 
-  const query = `${page}|${search}|${roleFilter}|${schoolFilter}`;
+  const query = `${page}|${search}|${roleFilter}|${schoolFilter}|${sort}`;
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -95,15 +96,16 @@ export const AdminUsers: React.FC = () => {
         search: search || undefined,
         roleId: roleFilter ? Number(roleFilter) : undefined,
         schoolId: schoolFilter || undefined,
+        sort: sort || undefined,
       });
       setPagedData(data);
       setError(null);
     } catch {
       setError('Erro ao carregar usuários.');
     } finally {
-      setLoadedQuery(`${page}|${search}|${roleFilter}|${schoolFilter}`);
+      setLoadedQuery(`${page}|${search}|${roleFilter}|${schoolFilter}|${sort}`);
     }
-  }, [page, search, roleFilter, schoolFilter]);
+  }, [page, search, roleFilter, schoolFilter, sort]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- busca assíncrona: o setState só acontece depois do await
@@ -318,6 +320,17 @@ export const AdminUsers: React.FC = () => {
                 ))}
               </FilterSelect>
             )}
+            <FilterSelect
+              label="Ordenar"
+              value={sort}
+              onChange={v => {
+                setSort(v === 'lastAccess' ? 'lastAccess' : '');
+                setPage(1);
+              }}
+            >
+              <option value="">Ordenar por nome</option>
+              <option value="lastAccess">Mais tempo sem entrar primeiro</option>
+            </FilterSelect>
           </FilterBar>
 
           {filtering && pagedData && (
@@ -349,6 +362,9 @@ export const AdminUsers: React.FC = () => {
                           <RoleTag role={user.role} />
                           <span>{schoolsOf(user) ?? 'Sem escola'}</span>
                         </div>
+                        <p className="mt-1 text-sm text-ink-3">
+                          Último acesso: <LastAccess user={user} />
+                        </p>
                         <div className="mt-2 border-t border-rule pt-2">{actionsFor(user)}</div>
                       </li>
                     ))}
@@ -364,13 +380,14 @@ export const AdminUsers: React.FC = () => {
                   <Th>Perfil</Th>
                   <Th>Escola</Th>
                   <Th>Situação</Th>
+                  <Th>Último acesso</Th>
                   <Th align="right" srOnly>
                     Ações
                   </Th>
                 </THead>
                 <TBody>
                   {users.length === 0 ? (
-                    <TableEmptyRow colSpan={6}>{empty}</TableEmptyRow>
+                    <TableEmptyRow colSpan={7}>{empty}</TableEmptyRow>
                   ) : (
                     users.map(user => (
                       <Tr key={user.id}>
@@ -384,6 +401,9 @@ export const AdminUsers: React.FC = () => {
                         <Td>{schoolsOf(user) ?? <span className="text-ink-3">—</span>}</Td>
                         <Td>
                           <AccountStatus user={user} />
+                        </Td>
+                        <Td className="whitespace-nowrap text-sm">
+                          <LastAccess user={user} />
                         </Td>
                         <Td align="right">{actionsFor(user)}</Td>
                       </Tr>
@@ -433,6 +453,16 @@ const AccountStatus: React.FC<{ user: UserListItem }> = ({ user }) => (
     {isLocked(user) && <Stamp tone="amber">Bloqueada até {formatTime(new Date(user.lockedUntil!))}</Stamp>}
   </span>
 );
+
+/** Último acesso em texto: data e hora, "nunca entrou" ou traço quando a API não informa */
+const LastAccess: React.FC<{ user: UserListItem }> = ({ user }) =>
+  user.lastAccessAt === undefined ? (
+    <span className="text-ink-3">—</span>
+  ) : user.lastAccessAt ? (
+    <span className="figures">{formatDateTime(user.lastAccessAt)}</span>
+  ) : (
+    <span className="text-ink-3">Nunca entrou</span>
+  );
 
 /** Escolas em que a pessoa está (várias para professor, orientador e responsável) */
 const schoolsOf = (user: UserListItem): string | null =>

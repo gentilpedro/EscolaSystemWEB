@@ -69,6 +69,8 @@ export interface UserFilters {
   isActive?: boolean;
   /** true: só quem está bloqueado agora por senha errada */
   locked?: boolean;
+  /** "lastAccess" (admin): quem nunca entrou primeiro, depois quem está há mais tempo sem entrar */
+  sort?: 'lastAccess';
 }
 
 export interface ClassItem {
