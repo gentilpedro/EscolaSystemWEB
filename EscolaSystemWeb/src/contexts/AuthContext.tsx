@@ -44,6 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return sessionUser.role;
   };
 
+  const refreshUser = async () => {
+    setUser(normalizeUser(await authApi.me()));
+  };
+
   const logout = async () => {
     // A API revoga a sessão e apaga os cookies; sem rede, a saída local acontece mesmo assim
     try {
@@ -63,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         logout,
+        refreshUser,
       }}
     >
       {children}

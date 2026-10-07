@@ -7,6 +7,8 @@ export interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<UserRole>;
   logout: () => Promise<void>;
+  /** Relê o usuário da API (depois de editar o próprio perfil) */
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
