@@ -5,13 +5,19 @@ import type { AdminStats, School, TicketSummary, UserListItem } from '../../type
 import { RoleId } from '../../types';
 import { dashboardApi, schoolApi, ticketApi, userApi } from '../../services/api';
 import { ActiveStamp, EmptyState, LoadError, PageLoader, Panel, TaskList } from '../../components/ui';
-import { formatDate, plural } from '../../lib/format';
+import { formatDate, formatTime, plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
 import { DashboardColumns, DashboardHeader } from '../../features/dashboard/DashboardParts';
 
 interface Attention {
   withoutDirector: School[];
   inactive: School[];
+}
+
+/** Item de um grupo de pendências: uma escola ou uma conta */
+interface AttentionItem {
+  id: string;
+  name: string;
 }
 
 /** O admin abre no que pede atenção na rede e nos cadastros que só ele faz; os totais ficam no cabeçalho. */
@@ -23,6 +29,8 @@ export const AdminDashboard: React.FC = () => {
   const [statsFailed, setStatsFailed] = useState(false);
   const [tickets, setTickets] = useState<TicketSummary | null>(null);
   const [ticketsFailed, setTicketsFailed] = useState(false);
+  // Administradores e diretores bloqueados agora por senha errada
+  const [locked, setLocked] = useState<UserListItem[]>([]);
   const [schoolsFailed, setSchoolsFailed] = useState(false);
 
   const fetchData = useCallback(() => {
@@ -31,8 +39,12 @@ export const AdminDashboard: React.FC = () => {
       listAll<School>((page, size) => schoolApi.list(page, size)),
       listAll<UserListItem>((page, size) => userApi.list(page, size, { roleId: RoleId.DIRECTOR, isActive: true })),
       ticketApi.summary(),
+      userApi.list(1, 50, { locked: true }),
     ])
-      .then(([statsResult, schoolsResult, directorsResult, ticketsResult]) => {
+      .then(([statsResult, schoolsResult, directorsResult, ticketsResult, lockedResult]) => {
+        // Sem a lista de bloqueados, o grupo só não aparece
+        setLocked(lockedResult.status === 'fulfilled' ? lockedResult.value.items : []);
+
         setTicketsFailed(ticketsResult.status === 'rejected');
         if (ticketsResult.status === 'fulfilled') setTickets(ticketsResult.value);
 
@@ -74,7 +86,12 @@ export const AdminDashboard: React.FC = () => {
     );
   }
 
-  const pending = attention ? attention.withoutDirector.length + attention.inactive.length : 0;
+  const pending = (attention ? attention.withoutDirector.length + attention.inactive.length : 0) + locked.length;
+  const lockedItems: Array<AttentionItem & { email: string }> = locked.map(u => ({
+    id: u.id,
+    name: u.lockedUntil ? `${u.name} · bloqueada até ${formatTime(new Date(u.lockedUntil))}` : u.name,
+    email: u.email,
+  }));
 
   return (
     <>
@@ -100,21 +117,31 @@ export const AdminDashboard: React.FC = () => {
             <LoadError message="Não foi possível verificar as escolas." onRetry={retry} className="m-5" />
           ) : pending === 0 ? (
             <EmptyState icon={CheckCircle2} title="Nada pede atenção agora" compact>
-              Todas as escolas ativas têm diretor.
+              Todas as escolas ativas têm diretor e nenhuma conta está bloqueada.
             </EmptyState>
           ) : (
             <div className="divide-y divide-rule">
               <AttentionGroup
+                title="Contas bloqueadas por senha errada"
+                explanation="Não conseguem entrar até o horário indicado, a menos que você desbloqueie."
+                items={lockedItems}
+                noun={['conta', 'contas']}
+                action={item => ({ to: `/admin/users?busca=${encodeURIComponent(item.email)}`, label: 'Desbloquear' })}
+                more={{ to: '/admin/users', label: 'Ver administradores e diretores' }}
+              />
+              <AttentionGroup
                 title="Escolas ativas sem diretor"
                 explanation="Sem diretor, ninguém cadastra a equipe, as turmas e os alunos."
-                schools={attention.withoutDirector}
+                items={attention.withoutDirector}
+                noun={['escola', 'escolas']}
                 action={school => ({ to: `/admin/users?novo=diretor&escola=${school.id}`, label: 'Cadastrar diretor' })}
                 more={{ to: '/admin/schools', label: 'Ver todas as escolas' }}
               />
               <AttentionGroup
                 title="Escolas desativadas"
                 explanation="Ninguém dessas escolas consegue entrar enquanto elas estiverem desativadas."
-                schools={attention.inactive}
+                items={attention.inactive}
+                noun={['escola', 'escolas']}
                 action={school => ({ to: `/admin/schools?busca=${encodeURIComponent(school.name)}`, label: 'Ver escola' })}
                 more={{ to: '/admin/schools', label: 'Ver todas as escolas' }}
               />
@@ -222,32 +249,41 @@ const TicketsPanel: React.FC<{ summary: TicketSummary | null; failed: boolean; o
 
 const ATTENTION_LIMIT = 5;
 
-/** Um tipo de pendência: a explicação aparece uma vez, com até 5 escolas e o atalho para o resto. */
-const AttentionGroup: React.FC<{
+/** Um tipo de pendência: a explicação aparece uma vez, com até 5 itens e o atalho para o resto. */
+function AttentionGroup<T extends AttentionItem>({
+  title,
+  explanation,
+  items,
+  noun,
+  action,
+  more,
+}: {
   title: string;
   explanation: string;
-  schools: School[];
-  action: (school: School) => { to: string; label: string };
+  items: T[];
+  /** Singular e plural do item, para o "e mais N" */
+  noun: [string, string];
+  action: (item: T) => { to: string; label: string };
   more: { to: string; label: string };
-}> = ({ title, explanation, schools, action, more }) => {
-  if (schools.length === 0) return null;
-  const shown = schools.slice(0, ATTENTION_LIMIT);
-  const rest = schools.length - shown.length;
+}) {
+  if (items.length === 0) return null;
+  const shown = items.slice(0, ATTENTION_LIMIT);
+  const rest = items.length - shown.length;
   return (
     <section className="px-5 py-4" aria-label={title}>
       <h3 className="font-semibold text-ink">
-        {title} <span className="figures text-ink-3">({schools.length.toLocaleString('pt-BR')})</span>
+        {title} <span className="figures text-ink-3">({items.length.toLocaleString('pt-BR')})</span>
       </h3>
       <p className="mb-2 text-sm text-ink-3">{explanation}</p>
       <ul className="divide-y divide-rule">
-        {shown.map(school => {
-          const link = action(school);
+        {shown.map(item => {
+          const link = action(item);
           return (
-            <li key={school.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
-              <span className="min-w-0 text-[0.9375rem] text-ink">{school.name}</span>
+            <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
+              <span className="min-w-0 text-[0.9375rem] text-ink">{item.name}</span>
               <Link to={link.to} className="inline-flex min-h-11 items-center text-sm font-semibold text-lousa hover:underline sm:min-h-0">
                 {link.label}
-                <span className="sr-only"> {school.name}</span>
+                <span className="sr-only"> {item.name}</span>
               </Link>
             </li>
           );
@@ -255,9 +291,9 @@ const AttentionGroup: React.FC<{
       </ul>
       {rest > 0 && (
         <Link to={more.to} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-lousa hover:underline sm:min-h-0">
-          e mais {plural(rest, 'escola', 'escolas')} · {more.label}
+          e mais {plural(rest, noun[0], noun[1])} · {more.label}
         </Link>
       )}
     </section>
   );
-};
+}

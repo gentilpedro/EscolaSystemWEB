@@ -219,8 +219,12 @@ test('conta bloqueada por senha errada aparece na lista e o admin desbloqueia', 
   for (let i = 0; i < 5; i++) await apiTokenStatus(director.email, 'Errada@123');
   expect(await apiTokenStatus(director.email, director.password)).toBe(429);
 
+  // O painel aponta a conta bloqueada e leva até ela em Usuários
   await loginAs(page, 'admin');
-  await page.goto('/admin/users');
+  const lockedGroup = page.getByRole('region', { name: 'Contas bloqueadas por senha errada' });
+  await expect(lockedGroup).toContainText(/bloqueada até \d{2}:\d{2}/);
+  await lockedGroup.getByRole('link', { name: /^Desbloquear/ }).first().click();
+  await expect(page.getByLabel('Pesquisar usuários')).toHaveValue(director.email);
   const row = page.getByRole('row', { name: new RegExp(director.email) });
   await expect(row.getByText(/^Bloqueada até \d{2}:\d{2}$/)).toBeVisible();
 
