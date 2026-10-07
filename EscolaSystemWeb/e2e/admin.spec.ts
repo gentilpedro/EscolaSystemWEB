@@ -195,9 +195,9 @@ test('usuários filtram por escola e viram cartões no celular', async ({ page }
   await loginAs(page, 'admin');
   await page.goto('/admin/users');
   const filter = page.getByLabel('Filtrar por escola');
-  // Primeira escola de verdade da lista (a opção 0 é "Todas as escolas")
-  const school = (await filter.locator('option').nth(1).textContent())!.replace(/ \(inativa\)$/, '');
-  await filter.selectOption({ index: 1 });
+  // A escola do seed tem diretora; escolas criadas por outros testes podem não ter ninguém que o admin veja
+  const school = 'Escola Estadual Jardim das Flores';
+  await filter.selectOption({ label: school });
   await expect(page.getByText(/contas? encontradas?/)).toBeVisible();
 
   const table = page.getByRole('table', { name: 'Usuários' });
