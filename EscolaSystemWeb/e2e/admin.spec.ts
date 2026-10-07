@@ -344,3 +344,30 @@ test('usuários mostram o último acesso e ordenam por quem está há mais tempo
   await expect(table.locator('tbody tr').first()).toContainText('Nunca entrou');
   await expect(table.getByRole('row', { name: new RegExp(director.body.name) })).toContainText('Nunca entrou');
 });
+
+test('página da escola mostra a direção e os números, sem dados da equipe', async ({ page }) => {
+  await loginAs(page, 'admin');
+  await page.goto(`/admin/schools?busca=${encodeURIComponent('Jardim das Flores')}`);
+  await page.getByRole('table', { name: 'Escolas cadastradas' }).getByRole('link', { name: 'Escola Estadual Jardim das Flores' }).click();
+  await expect(page).toHaveURL(/\/admin\/schools\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole('heading', { name: 'Escola Estadual Jardim das Flores' })).toBeVisible();
+  const direction = page.getByRole('region', { name: 'Direção' });
+  await expect(direction).toContainText('Marta Ribeiro');
+  await expect(direction).toContainText('diretora@escolademo.com.br');
+  const usage = page.getByRole('region', { name: 'Uso do sistema' });
+  await expect(usage).toContainText('Turmas ativas');
+  await expect(usage).toContainText('Os nomes ficam com a direção da escola.');
+  // Nenhum nome de professor da escola aparece para o admin
+  await expect(page.getByText('Paulo Mendes')).toHaveCount(0);
+
+  // Escola nova: sem diretor, com o atalho para cadastrar
+  const admin = await apiToken(ACCOUNTS.admin.email, ACCOUNTS.admin.password);
+  const suffix = uniqueSuffix();
+  const school = await apiPost<{ id: string }>(admin, '/schools', {
+    name: `Escola Página ${suffix}`, address: 'Rua F, 60', phone: '(51) 3333-1111', email: `pagina.${suffix}@escola.com.br`,
+  });
+  await page.goto(`/admin/schools/${school.body.id}`);
+  await expect(page.getByRole('region', { name: 'Direção' })).toContainText('Sem diretor.');
+  await page.getByRole('link', { name: 'Cadastrar diretor' }).click();
+  await expect(openDialog(page).getByLabel('Escola')).toHaveValue(school.body.id);
+});

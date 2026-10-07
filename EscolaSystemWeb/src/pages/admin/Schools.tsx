@@ -1,16 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Power, PowerOff, Trash2, School as SchoolIcon } from 'lucide-react';
 import type { School } from '../../types';
 import { schoolApi } from '../../services/api';
 import {
   ActiveStamp,
-  Alert,
   Button,
-  CheckboxField,
   EmptyState,
   FilterBar,
-  FormDialog,
   IconButton,
   LoadError,
   PageHeader,
@@ -21,7 +18,6 @@ import {
   TableFrame,
   TBody,
   Td,
-  TextField,
   Th,
   THead,
   Tr,
@@ -31,7 +27,8 @@ import {
 } from '../../components/ui';
 import { matches, plural } from '../../lib/format';
 import { listAll } from '../../lib/paging';
-import { emailError, maskPhone, minLengthError, phoneError } from '../../lib/contact';
+import { confirmActivation } from '../../features/schools/activation';
+import { SchoolModal } from '../../features/schools/SchoolModal';
 
 export const AdminSchools: React.FC = () => {
   const toast = useToast();
@@ -165,7 +162,9 @@ export const AdminSchools: React.FC = () => {
                 {filteredSchools.map(school => (
                   <li key={school.id} className="rounded-lg border border-rule bg-surface px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="min-w-0 font-semibold text-ink">{school.name}</p>
+                      <Link to={`/admin/schools/${school.id}`} className="min-w-0 font-semibold text-ink hover:text-lousa hover:underline">
+                        {school.name}
+                      </Link>
                       <ActiveStamp active={school.isActive} feminine />
                     </div>
                     <p className="mt-1 break-all text-sm text-ink-3">{school.email}</p>
@@ -197,7 +196,9 @@ export const AdminSchools: React.FC = () => {
                 filteredSchools.map(school => (
                   <Tr key={school.id}>
                     <Td sticky strong>
-                      {school.name}
+                      <Link to={`/admin/schools/${school.id}`} className="text-ink hover:text-lousa hover:underline">
+                        {school.name}
+                      </Link>
                     </Td>
                     <Td>{school.email}</Td>
                     <Td className="max-w-[16rem]">
@@ -228,139 +229,5 @@ export const AdminSchools: React.FC = () => {
         />
       )}
     </>
-  );
-};
-
-/** Ligar ou desligar a escola afeta todo mundo dela: confirma dizendo quantas pessoas. */
-const confirmActivation = async (confirm: ReturnType<typeof useConfirm>, target: School, activate: boolean) => {
-  let people: number | null = null;
-  try {
-    // O admin não lista as pessoas da escola: a API manda só quantas têm conta ativa
-    people = (await schoolApi.get(target.id)).activeUsers ?? null;
-  } catch {
-    // Sem a contagem, a confirmação continua, só sem o número
-  }
-  const who = people === null ? 'As pessoas desta escola' : people === 0 ? 'Ninguém' : plural(people, 'pessoa', 'pessoas');
-  return confirm(
-    activate
-      ? {
-          title: `Reativar ${target.name}?`,
-          consequence: `${who} com conta ativa ${people === 1 ? 'volta' : 'voltam'} a entrar no sistema.`,
-          confirmLabel: 'Reativar escola',
-          reversible: true,
-          tone: 'primary',
-        }
-      : {
-          title: `Desativar ${target.name}?`,
-          consequence:
-            people === 0
-              ? 'Ninguém da escola tem conta ativa agora. Nada é apagado, e a escola pode ser reativada depois.'
-              : `${who} ${people === 1 ? 'perde' : 'perdem'} o acesso na hora: não ${people === 1 ? 'consegue' : 'conseguem'} entrar até a escola ser reativada. Nada é apagado.`,
-          confirmLabel: 'Desativar escola',
-          reversible: true,
-        },
-  );
-};
-
-interface SchoolModalProps {
-  school: School | null;
-  onClose: () => void;
-  onSave: () => void;
-}
-
-const SchoolModal: React.FC<SchoolModalProps> = ({ school, onClose, onSave }) => {
-  const confirm = useConfirm();
-  const [formData, setFormData] = useState({
-    name: school?.name ?? '',
-    email: school?.email ?? '',
-    address: school?.address ?? '',
-    phone: maskPhone(school?.phone ?? ''),
-    isActive: school?.isActive ?? true,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Os erros de campo aparecem depois de sair do campo ou de tentar salvar, não enquanto a pessoa digita
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  const fieldErrors = {
-    name: minLengthError(formData.name, 3, 'O nome'),
-    address: minLengthError(formData.address, 5, 'O endereço'),
-    email: emailError(formData.email),
-    phone: phoneError(formData.phone),
-  };
-  const shown = (field: keyof typeof fieldErrors) => (touched[field] ? fieldErrors[field] : undefined);
-  const touch = (field: keyof typeof fieldErrors) => () => setTouched(t => ({ ...t, [field]: true }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (Object.values(fieldErrors).some(Boolean)) {
-      setTouched({ name: true, address: true, email: true, phone: true });
-      setError('Corrija os campos destacados.');
-      return;
-    }
-    if (school && formData.isActive !== school.isActive && !(await confirmActivation(confirm, school, formData.isActive))) return;
-    setSaving(true);
-    setError(null);
-    try {
-      if (school) {
-        await schoolApi.update(school.id, formData);
-      } else {
-        await schoolApi.create(formData);
-      }
-      onSave();
-    } catch (err) {
-      setError(errorMessage(err, 'Erro ao salvar escola.'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <FormDialog title={school ? 'Editar escola' : 'Nova escola'} onClose={onClose} onSubmit={handleSubmit} saving={saving} submitLabel="Salvar">
-      {error && <Alert tone="error">{error}</Alert>}
-      <TextField
-        label="Nome"
-        value={formData.name}
-        onChange={e => setFormData({ ...formData, name: e.target.value })}
-        onBlur={touch('name')}
-        error={shown('name')}
-        maxLength={300}
-        required
-      />
-      <TextField
-        label="E-mail"
-        type="email"
-        value={formData.email}
-        onChange={e => setFormData({ ...formData, email: e.target.value })}
-        onBlur={touch('email')}
-        error={shown('email')}
-        maxLength={200}
-        required
-      />
-      <TextField
-        label="Endereço"
-        value={formData.address}
-        onChange={e => setFormData({ ...formData, address: e.target.value })}
-        onBlur={touch('address')}
-        error={shown('address')}
-        maxLength={500}
-        required
-      />
-      <TextField
-        label="Telefone"
-        type="tel"
-        inputMode="numeric"
-        className="figures"
-        value={formData.phone}
-        onChange={e => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
-        onBlur={touch('phone')}
-        error={shown('phone')}
-        placeholder="(00) 00000-0000"
-        required
-      />
-      {school && (
-        <CheckboxField label="Escola ativa" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
-      )}
-    </FormDialog>
   );
 };

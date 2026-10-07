@@ -29,6 +29,8 @@ import type {
   TicketStatus,
   TicketSummary,
   TicketType,
+  SchoolOverview,
+  SchoolSummary,
   StudentItem,
   StudentPayload,
   UpdateAttendancePayload,
@@ -196,6 +198,13 @@ export const auditApi = {
   /** Registro de atividades do admin; from e to em ISO, to exclusivo */
   list: (page = 1, pageSize = 25, filters: { action?: string; from?: string; to?: string } = {}): Paged<AuditLogItem> =>
     api.get('/audit', { params: { page, pageSize, ...filters } }),
+};
+
+export const adminSchoolsApi = {
+  /** Todas as escolas com os números para o painel (só admin) */
+  overview: () => api.get<SchoolOverview[]>('/admin/schools/summary'),
+  /** Uma escola: contato da direção e contagens (só admin) */
+  summary: (id: string) => api.get<SchoolSummary>(`/admin/schools/${id}/summary`),
 };
 
 export const ticketApi = {
